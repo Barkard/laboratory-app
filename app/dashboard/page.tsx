@@ -17,21 +17,31 @@ import {
     ListItemText,
     Divider,
     IconButton,
-    Button
+    Button as MUIButton
 } from "@mui/material";
+import Button from "@/components/ui/Button";
 
 const StatCard = ({ title, value, icon, color, trend }: { title: string, value: string, icon: string, color: string, trend?: string }) => (
-    <Card sx={{ p: 3, boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)', border: '1px solid #f1f5f9' }}>
+    <Card sx={{
+        p: 3,
+        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        '&:hover': {
+            transform: 'translateY(-8px)',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+            borderColor: 'rgba(56, 189, 248, 0.2)',
+        }
+    }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
             <Box
                 sx={{
                     p: 1.5,
                     borderRadius: '0.75rem',
-                    bgcolor: `${color}.main`,
+                    bgcolor: color === 'primary' ? 'primary.main' : `${color}.main`,
                     color: 'white',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                 }}
             >
                 <Icon name={icon} size="sm" />
@@ -40,16 +50,16 @@ const StatCard = ({ title, value, icon, color, trend }: { title: string, value: 
                 <Chip
                     label={trend}
                     size="small"
-                    color="success"
+                    color="primary"
                     variant="outlined"
-                    sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                    sx={{ fontWeight: 700, fontSize: '0.7rem', borderColor: 'primary.main', color: 'primary.main' }}
                 />
             )}
         </Stack>
-        <Typography variant="body2" color="text.secondary" fontWeight={500}>
+        <Typography variant="body2" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             {title}
         </Typography>
-        <Typography variant="h4" fontWeight={700} mt={0.5}>
+        <Typography variant="h4" fontWeight={800} mt={0.5} color="white">
             {value}
         </Typography>
     </Card>
@@ -60,16 +70,16 @@ export default function AdminDashboard() {
         <DashboardLayout>
             <Box maxWidth="xl" sx={{ mx: 'auto' }}>
                 <Box mb={4}>
-                    <Typography variant="h5" fontWeight={700} gutterBottom>
-                        Resumen del Laboratorio
+                    <Typography variant="h4" fontWeight={800} color="white" gutterBottom>
+                        Gestión Integral <span className="text-celeste">de Laboratorio</span>
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Monitoree el estado de sus citas y resultados.
+                    <Typography variant="body1" color="text.secondary" fontWeight={500}>
+                        Bienvenido de nuevo, Dr. Pineda. Aquí está el resumen de hoy.
                     </Typography>
                 </Box>
 
-                <Grid container spacing={3} mb={4} component="div">
-                    <Grid size={{ xs: 12, sm: 6, md: 3 }} component="div">
+                <Grid container spacing={3} mb={4}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <StatCard
                             title="Citas para hoy"
                             value="12"
@@ -78,15 +88,15 @@ export default function AdminDashboard() {
                             trend="+2 nuevas"
                         />
                     </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 3 }} component="div">
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <StatCard
                             title="Resultados Pendientes"
-                            value="8"
+                            value="08"
                             icon="file-find"
                             color="warning"
                         />
                     </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 3 }} component="div">
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <StatCard
                             title="Exámenes Realizados"
                             value="145"
@@ -95,55 +105,59 @@ export default function AdminDashboard() {
                             trend="+15%"
                         />
                     </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 3 }} component="div">
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <StatCard
                             title="Total Usuarios"
                             value="89"
-                            icon="info"
+                            icon="group"
                             color="secondary"
                         />
                     </Grid>
                 </Grid>
 
                 <Grid container spacing={4} component="div">
-                    <Grid size={{ xs: 12, lg: 6 }} component="div">
-                        <Card sx={{ p: 3, height: '100%' }}>
-                            <Typography variant="h6" fontWeight={700} mb={3}>
-                                Próximas Citas
-                            </Typography>
+                    <Grid size={{ xs: 12, lg: 7 }} component="div">
+                        <Card sx={{ p: 4, height: '100%', bgcolor: 'rgba(15, 23, 42, 0.5)' }}>
+                            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
+                                <Typography variant="h6" fontWeight={800} color="white">
+                                    Próximas Citas Médicas
+                                </Typography>
+                                <Button size="sm" variant="ghost">Ver todas</Button>
+                            </Stack>
                             <List disablePadding>
-                                {[1, 2, 3].map((i, index) => (
+                                {[1, 2, 3, 4].map((i, index) => (
                                     <React.Fragment key={i}>
                                         <ListItem
                                             sx={{
                                                 px: 2,
-                                                py: 2,
-                                                borderRadius: '0.75rem',
-                                                border: '1px solid #f8fafc',
-                                                mb: index === 2 ? 0 : 2,
-                                                '&:hover': { bgcolor: '#f8fafc' }
+                                                py: 2.5,
+                                                borderRadius: '1rem',
+                                                mb: 2,
+                                                bgcolor: 'rgba(255, 255, 255, 0.02)',
+                                                border: '1px solid rgba(255, 255, 255, 0.05)',
+                                                '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(56, 189, 248, 0.2)' }
                                             }}
                                             secondaryAction={
                                                 <Box sx={{ textAlign: 'right' }}>
-                                                    <Typography variant="caption" fontWeight={700} display="block">
+                                                    <Typography variant="body2" fontWeight={800} color="white" display="block">
                                                         10:30 AM
                                                     </Typography>
-                                                    <Typography variant="caption" color="primary" fontWeight={700} sx={{ textTransform: 'uppercase' }}>
-                                                        Confirmada
+                                                    <Typography variant="caption" color="primary" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                        CONFIRMADA
                                                     </Typography>
                                                 </Box>
                                             }
                                         >
                                             <ListItemAvatar>
-                                                <Avatar sx={{ bgcolor: '#f1f5f9', color: '#94a3b8' }}>
+                                                <Avatar sx={{ bgcolor: 'rgba(56, 189, 248, 0.1)', color: 'primary.main', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
                                                     <Icon name="user" size="xs" />
                                                 </Avatar>
                                             </ListItemAvatar>
                                             <ListItemText
-                                                primary={`Paciente #${i}04`}
+                                                primary={`Paciente #${i}04 - Leon Pineda`}
                                                 secondary="Hematología Completa"
-                                                primaryTypographyProps={{ variant: 'body2', fontWeight: 700 }}
-                                                secondaryTypographyProps={{ variant: 'caption' }}
+                                                primaryTypographyProps={{ variant: 'body2', fontWeight: 700, color: 'white' }}
+                                                secondaryTypographyProps={{ variant: 'caption', color: 'text.secondary', fontWeight: 500 }}
                                             />
                                         </ListItem>
                                     </React.Fragment>
@@ -152,41 +166,49 @@ export default function AdminDashboard() {
                         </Card>
                     </Grid>
 
-                    <Grid size={{ xs: 12, lg: 6 }} component="div">
-                        <Card sx={{ p: 3, height: '100%' }}>
-                            <Typography variant="h6" fontWeight={700} mb={3}>
+                    <Grid size={{ xs: 12, lg: 5 }} component="div">
+                        <Card sx={{ p: 4, height: '100%', bgcolor: 'rgba(15, 23, 42, 0.5)' }}>
+                            <Typography variant="h6" fontWeight={800} color="white" mb={4}>
                                 Accesos Directos
                             </Typography>
-                            <Grid container spacing={2} component="div">
+                            <Grid container spacing={2}>
                                 {[
                                     { label: 'Gestionar Citas', icon: 'calendar-plus', color: 'primary', href: '/dashboard/appointments' },
-                                    { label: 'Gestión de Usuarios', icon: 'user-plus', color: 'secondary', href: '/dashboard/users' },
-                                    { label: 'Registrar Examen', icon: 'vial', color: 'success', href: '/dashboard/exams' },
-                                    { label: 'Configuraciones', icon: 'cog', color: 'warning', href: '/dashboard/settings' },
+                                    { label: 'Gestión de Pacientes', icon: 'user-plus', color: 'secondary', href: '/dashboard/users' },
+                                    { label: 'Registrar Examen', icon: 'vial', color: 'primary', href: '/dashboard/exams' },
+                                    { label: 'Configuración', icon: 'cog', color: 'secondary', href: '/dashboard/settings' },
                                 ].map((action) => (
-                                    <Grid key={action.label} size={{ xs: 12, sm: 6 }} component="div">
+                                    <Grid key={action.label} size={{ xs: 12, sm: 6 }}>
                                         <Button
                                             fullWidth
-                                            variant="outlined"
-                                            color={action.color as any}
-                                            startIcon={<Icon name={action.icon} size="sm" />}
-                                            href={action.href}
+                                            variant="secondary"
+                                            onClick={() => window.location.href = action.href}
+                                            leftIcon={<Icon name={action.icon} size="sm" />}
                                             sx={{
                                                 py: 2,
+                                                px: 3,
                                                 justifyContent: 'flex-start',
                                                 borderRadius: '1rem',
-                                                borderWidth: '1.5px',
-                                                '&:hover': { borderWidth: '1.5px' }
+                                                bgcolor: 'rgba(255, 255, 255, 0.03)',
+                                                border: '1px solid rgba(255, 255, 255, 0.05)',
+                                                color: 'white',
+                                                '&:hover': {
+                                                    bgcolor: 'rgba(56, 189, 248, 0.05)',
+                                                    borderColor: 'rgba(56, 189, 248, 0.2)',
+                                                    color: 'primary.main',
+                                                    transform: 'translateX(4px)'
+                                                }
                                             }}
                                         >
-                                            {action.label}
+                                            <Typography variant="caption" fontWeight={700} sx={{ ml: 1 }}>{action.label}</Typography>
                                         </Button>
                                     </Grid>
                                 ))}
                             </Grid>
-                            <Box mt={4} p={2} bgcolor="#f8fafc" borderRadius="1rem">
-                                <Typography variant="caption" color="text.secondary" display="block" textAlign="center" fontWeight={500}>
-                                    Use los accesos directos para navegar rápidamente entre los módulos principales del sistema.
+
+                            <Box mt={6} p={3} sx={{ bgcolor: 'rgba(56, 189, 248, 0.03)', borderRadius: '1.25rem', border: '1px dashed rgba(56, 189, 248, 0.2)' }}>
+                                <Typography variant="body2" color="primary" textAlign="center" fontWeight={600} sx={{ lineHeight: 1.6 }}>
+                                    "La eficiencia en el laboratorio comienza con una gestión inteligente de los datos."
                                 </Typography>
                             </Box>
                         </Card>

@@ -3,73 +3,32 @@
 import React from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Icon from '@/components/ui/Icon';
-import { Appointment, User } from '@/types';
-import { formatDateTime } from '@/utils/formatters';
+import { User } from '@/types';
+import Modal from '@/components/ui/Modal';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import UserForm from '@/components/users/UserForm';
 import {
     Box,
     Typography,
     Button,
     TextField,
     InputAdornment,
-    Chip,
     IconButton,
-    Stack
+    Stack,
+    Paper
 } from '@mui/material';
-import Modal from '@/components/ui/Modal';
-import ConfirmModal from '@/components/ui/ConfirmModal';
-import AppointmentForm from '@/components/appointments/AppointmentForm';
 import { DataGrid, GridColDef, GridRowSelectionModel, GridRenderCellParams } from '@mui/x-data-grid';
-import Paper from '@mui/material/Paper';
 
-const appointmentsData: Appointment[] = [
-    { appointment_id: 101, user_id: 1, requested_date: '2026-02-21T08:30:00', status: 'Confirmed' },
-    { appointment_id: 102, user_id: 2, requested_date: '2026-02-21T09:15:00', status: 'Pending' },
-    { appointment_id: 103, user_id: 3, requested_date: '2026-02-21T10:00:00', status: 'Confirmed' },
-    { appointment_id: 104, user_id: 4, requested_date: '2026-02-22T11:30:00', status: 'Cancelled' },
-    { appointment_id: 105, user_id: 1, requested_date: '2026-02-23T08:00:00', status: 'Pending' },
-];
-
-const mockUsers: User[] = [
+const usersData: User[] = [
     { user_id: 1, identity_card: '12345678', first_name: 'Leon', last_name: 'Pineda' },
     { user_id: 2, identity_card: '87654321', first_name: 'Maria', last_name: 'Garcia' },
     { user_id: 3, identity_card: '11223344', first_name: 'Jose', last_name: 'Rodriguez' },
     { user_id: 4, identity_card: '44332211', first_name: 'Ana', last_name: 'Martinez' },
+    { user_id: 5, identity_card: '55667788', first_name: 'Carlos', last_name: 'Sanches' },
 ];
 
-const mockExams: any[] = [
-    { exam_id: 1, name: 'Hematología Completa' },
-    { exam_id: 2, name: 'Glucosa' },
-    { exam_id: 3, name: 'Colesterol Total' },
-    { exam_id: 4, name: 'Uanálisis' },
-    { exam_id: 5, name: 'Creatinina' },
-];
-
-const StatusBadge = ({ status }: { status: string }) => {
-    const variants: Record<string, "warning" | "success" | "error" | "default"> = {
-        Pending: 'warning',
-        Confirmed: 'success',
-        Cancelled: 'error',
-    };
-
-    const labels: Record<string, string> = {
-        Pending: 'Pendiente',
-        Confirmed: 'Confirmada',
-        Cancelled: 'Cancelada',
-    };
-
-    return (
-        <Chip
-            label={labels[status] || status}
-            color={variants[status] || 'default'}
-            size="small"
-            variant="outlined"
-            sx={{ fontWeight: 700, borderRadius: '6px' }}
-        />
-    );
-};
-
-export default function AppointmentsPage() {
-    const [rows, setRows] = React.useState(appointmentsData);
+export default function UsersPage() {
+    const [rows, setRows] = React.useState(usersData);
     const [selectionModel, setSelectionModel] = React.useState<GridRowSelectionModel>({
         type: 'include',
         ids: new Set()
@@ -94,50 +53,31 @@ export default function AppointmentsPage() {
 
         setConfirmModal({
             open: true,
-            title: '¿Eliminar citas?',
-            description: `¿Está seguro que desea eliminar ${selectedIds.length} citas médicas? Esta acción no se puede deshacer.`,
+            title: '¿Eliminar usuarios?',
+            description: `¿Está seguro que desea eliminar ${selectedIds.length} pacientes del sistema? Esta acción no se puede deshacer.`,
             onConfirm: () => {
-                setRows(rows.filter((row) => !selectionModel.ids.has(row.appointment_id)));
+                setRows(rows.filter((row) => !selectionModel.ids.has(row.user_id)));
                 setSelectionModel({ type: 'include', ids: new Set() });
             }
         });
     };
 
-    const handleCreateAppointment = (data: Partial<Appointment>) => {
-        const newAppointment: Appointment = {
-            appointment_id: Math.max(...rows.map(r => r.appointment_id)) + 1,
-            user_id: data.user_id || 0,
-            requested_date: data.requested_date || new Date().toISOString(),
-            status: data.status || 'Pending',
+    const handleCreateUser = (userData: Partial<User>) => {
+        const newUser: User = {
+            user_id: rows.length + 1,
+            identity_card: userData.identity_card || '',
+            first_name: userData.first_name || '',
+            last_name: userData.last_name || '',
         };
-        setRows([...rows, newAppointment]);
+        setRows([...rows, newUser]);
         setIsModalOpen(false);
     };
 
     const columns: GridColDef[] = [
-        { field: 'appointment_id', headerName: 'ID de Cita', width: 100 },
-        { field: 'user_id', headerName: 'Usuario (ID)', width: 120 },
-        {
-            field: 'requested_date',
-            headerName: 'Fecha Solicitada',
-            width: 250,
-            renderCell: (params: GridRenderCellParams) => (
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
-                    <Icon name="calendar" size="xs" color="#94a3b8" />
-                    <Typography variant="body2">{formatDateTime(params.value)}</Typography>
-                </Stack>
-            )
-        },
-        {
-            field: 'status',
-            headerName: 'Estado',
-            width: 150,
-            renderCell: (params: GridRenderCellParams) => (
-                <Stack direction="row" alignItems="center" sx={{ height: '100%' }}>
-                    <StatusBadge status={params.value} />
-                </Stack>
-            )
-        },
+        { field: 'user_id', headerName: 'ID', width: 80 },
+        { field: 'identity_card', headerName: 'Cédula', width: 150 },
+        { field: 'first_name', headerName: 'Nombres', width: 200 },
+        { field: 'last_name', headerName: 'Apellidos', width: 200 },
         {
             field: 'actions',
             headerName: 'Acciones',
@@ -154,10 +94,10 @@ export default function AppointmentsPage() {
                         onClick={() => {
                             setConfirmModal({
                                 open: true,
-                                title: '¿Eliminar cita?',
-                                description: '¿Está seguro que desea eliminar esta cita médica? Esta acción no se puede deshacer.',
+                                title: '¿Eliminar usuario?',
+                                description: '¿Está seguro que desea eliminar este paciente del sistema? Esta acción no se puede deshacer.',
                                 onConfirm: () => {
-                                    setRows(rows.filter(r => r.appointment_id !== params.row.appointment_id));
+                                    setRows(rows.filter(r => r.user_id !== params.row.user_id));
                                 }
                             });
                         }}
@@ -181,10 +121,10 @@ export default function AppointmentsPage() {
                 >
                     <Box>
                         <Typography variant="h5" fontWeight={700}>
-                            Gestión de Citas
+                            Gestión de Usuarios
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                            Vea y administre las citas solicitadas en el laboratorio.
+                            Administre los pacientes registrados en el sistema.
                         </Typography>
                     </Box>
                     <Stack direction="row" spacing={2}>
@@ -200,11 +140,11 @@ export default function AppointmentsPage() {
                         )}
                         <Button
                             variant="contained"
-                            startIcon={<Icon name="calendar-event" size="xs" />}
+                            startIcon={<Icon name="user-plus" size="xs" />}
                             onClick={() => setIsModalOpen(true)}
                             sx={{ boxShadow: 'none', '&:hover': { boxShadow: 'none' } }}
                         >
-                            Agendar Cita
+                            Nuevo Usuario
                         </Button>
                     </Stack>
                 </Stack>
@@ -212,12 +152,10 @@ export default function AppointmentsPage() {
                 <Modal
                     open={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
-                    title="Agendar Nueva Cita"
+                    title="Registrar Nuevo Paciente"
                 >
-                    <AppointmentForm
-                        users={mockUsers}
-                        exams={mockExams}
-                        onSubmit={handleCreateAppointment}
+                    <UserForm
+                        onSubmit={handleCreateUser}
                         onCancel={() => setIsModalOpen(false)}
                     />
                 </Modal>
@@ -225,7 +163,7 @@ export default function AppointmentsPage() {
                 <Box mb={3}>
                     <TextField
                         fullWidth
-                        placeholder="Buscar por ID o Usuario..."
+                        placeholder="Buscar por nombre o cédula..."
                         variant="outlined"
                         size="small"
                         InputProps={{
@@ -244,7 +182,7 @@ export default function AppointmentsPage() {
                     <DataGrid
                         rows={rows}
                         columns={columns}
-                        getRowId={(row) => row.appointment_id}
+                        getRowId={(row) => row.user_id}
                         initialState={{
                             pagination: {
                                 paginationModel: { page: 0, pageSize: 5 },

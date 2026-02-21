@@ -15,13 +15,13 @@ interface SidebarItemProps {
 const SidebarItem: React.FC<SidebarItemProps> = ({ href, icon, label, active }) => (
     <Link
         href={href}
-        className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${active
-            ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-            : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+        className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-95 ${active
+            ? 'bg-linear-to-r from-sky-400 to-sky-600 text-white shadow-lg shadow-sky-900/20 translate-x-1'
+            : 'text-slate-400 hover:bg-white/5 hover:text-sky-400 hover:translate-x-1'
             }`}
     >
         <Icon name={icon} type={active ? 'solid' : 'regular'} size="sm" />
-        <span className="font-medium">{label}</span>
+        <span className="font-semibold">{label}</span>
     </Link>
 );
 
@@ -35,17 +35,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     return (
         <aside
             className={`
-                fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100 flex flex-col h-screen transition-transform duration-300 transform
+                fixed inset-y-0 left-0 z-30 w-64 bg-slate-950/40 backdrop-blur-xl border-r border-white/5 flex flex-col h-screen transition-transform duration-300 transform
                 lg:translate-x-0 lg:static lg:inset-0
                 ${isOpen ? 'translate-x-0' : '-translate-x-full'}
             `}
         >
             <div className="p-6">
                 <div className="flex items-center space-x-3 mb-10">
-                    <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white">
+                    <div className="w-10 h-10 bg-linear-to-br from-sky-400 to-sky-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
                         <Icon name="flask" size="md" />
                     </div>
-                    <span className="text-xl font-bold text-gray-900 tracking-tight">LabSystem</span>
+                    <span className="text-xl font-bold text-white tracking-tight">LabSystem</span>
                 </div>
 
                 <nav className="space-y-2">

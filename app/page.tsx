@@ -27,29 +27,21 @@ export default function LoginPage() {
         <div className="relative z-10 text-white max-w-lg">
           <div className="flex items-center space-x-3 mb-8">
             <Icon name="flask" size="xl" className="text-blue-200" />
-            <span className="text-3xl font-bold tracking-tight">LabSystem</span>
+            <span className="text-3xl font-bold tracking-tight">Laboratorio</span>
           </div>
           <h2 className="text-4xl font-extrabold mb-6 leading-tight">
-            Gestión eficiente para su laboratorio moderno
+            Hostipal Carlos Roa Moreno
           </h2>
-          <p className="text-blue-100 text-lg leading-relaxed mb-8">
-            Optimice sus procesos, gestione resultados y brinde un mejor servicio con nuestra plataforma integral.
-          </p>
-
           <div className="grid grid-cols-2 gap-6">
             <div className="flex items-start space-x-3">
               <Icon name="check-circle" className="text-blue-300 mt-1" />
               <div>
                 <h4 className="font-semibold">Seguro</h4>
-                <p className="text-sm text-blue-200">Datos protegidos en todo momento</p>
+                <p className="text-sm text-blue-200">Resultados en tiempo real</p>
               </div>
             </div>
             <div className="flex items-start space-x-3">
               <Icon name="bolt" className="text-blue-300 mt-1" />
-              <div>
-                <h4 className="font-semibold">Rápido</h4>
-                <p className="text-sm text-blue-200">Resultados en tiempo real</p>
-              </div>
             </div>
           </div>
         </div>

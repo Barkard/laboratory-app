@@ -8,7 +8,6 @@ export interface User {
 export interface ExamType {
     type_id: number;
     category_name: string;
-    price: number;
 }
 
 export interface CustomFile {
@@ -17,10 +16,19 @@ export interface CustomFile {
     json_schema: string;
 }
 
+export interface DynamicField {
+    id: string;
+    label: string;
+    type: 'text' | 'number' | 'checkbox' | 'select';
+    options?: string[];
+}
+
 export interface Exam {
     exam_id: number;
+    name: string;
     type_id: number;
     file_id: number;
+    customFields?: DynamicField[];
 }
 
 export interface Appointment {
@@ -41,4 +49,5 @@ export interface Result {
     result_id: number;
     appointment_detail_id: number;
     delivery_date: Date | string;
+    data?: Record<string, any>; // Stores values for dynamic fields
 }

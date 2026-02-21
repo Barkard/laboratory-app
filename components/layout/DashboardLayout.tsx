@@ -14,14 +14,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
     return (
-        <div className="flex h-screen bg-slate-50 overflow-hidden">
+        <div className="flex h-screen bg-celeste-gradient overflow-hidden">
             {/* Mobile Sidebar Overlay */}
-            {isSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-20 lg:hidden transition-opacity"
-                    onClick={toggleSidebar}
-                ></div>
-            )}
+            <div
+                className={`fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-20 lg:hidden transition-all duration-300 ${isSidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+                    }`}
+                onClick={toggleSidebar}
+            ></div>
 
             <Sidebar isOpen={isSidebarOpen} />
 
