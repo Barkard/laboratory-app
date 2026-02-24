@@ -3,6 +3,7 @@
 import React from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Icon from '@/components/ui/Icon';
+import ScrollReveal from "@/components/ui/ScrollReveal";
 import { Result, Exam, DynamicField } from '@/types';
 import { formatDateTime } from '@/utils/formatters';
 import {
@@ -218,16 +219,28 @@ export default function ResultsPage() {
                     mb={4}
                 >
                     <Box>
-                        <Stack direction="row" spacing={1.5} alignItems="center" mb={1}>
-                            <Box sx={{ p: 1, bgcolor: 'primary.main', borderRadius: '0.75rem', color: 'white', display: 'flex' }}>
-                                <Icon name="cloud-upload" size="sm" />
+                        <Stack direction="row" spacing={2} alignItems="center">
+                            <Box sx={{
+                                width: 40,
+                                height: 40,
+                                bgcolor: '#34d399', // emerald-400
+                                borderRadius: '0.75rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 0 15px rgba(52, 211, 153, 0.4)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                zIndex: 10,
+                                position: 'relative'
+                            }}>
+                                <Icon name="vial" size="xs" color="white" />
                             </Box>
-                            <Typography variant="h5" fontWeight={700}>
+                            <Typography variant="h5" fontWeight={700} color="white">
                                 Resultados de Exámenes
                             </Typography>
                         </Stack>
-                        <Typography variant="body2" color="text.secondary">
-                            Capture y gestione los resultados de laboratorio utilizando formularios dinámicos.
+                        <Typography variant="body2" color="#d1d5dc" sx={{ mt: 1.5, ml: 0.5 }}>
+                            Consulte y gestione los resultados de los análisis realizados.
                         </Typography>
                     </Box>
                     <Button
@@ -369,48 +382,48 @@ export default function ResultsPage() {
                     )}
                 </Modal>
 
-                <Box mb={3}>
-                    <TextField
-                        fullWidth
-                        placeholder="Buscar por paciente o examen..."
-                        variant="outlined"
-                        size="small"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <Icon name="search" size="xs" color="#94a3b8" />
-                                </InputAdornment>
-                            ),
-                            sx: { borderRadius: '0.75rem', bgcolor: 'white' }
-                        }}
-                        sx={{ maxWidth: 400 }}
-                    />
-                </Box>
+                <ScrollReveal delay={200}>
+                    <Box mb={3}>
+                        <TextField
+                            fullWidth
+                            placeholder="Buscar por paciente, examen o código..."
+                            variant="outlined"
+                            size="small"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <Icon name="search" size="xs" color="#94a3b8" />
+                                    </InputAdornment>
+                                ),
+                            }}
+                            sx={{ maxWidth: 400 }}
+                        />
+                    </Box>
 
-                <Paper sx={{ width: '100%', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
-                    <DataGrid
-                        rows={filteredRows}
-                        columns={columns}
-                        getRowId={(row) => row.result_id}
-                        autoHeight
-                        disableRowSelectionOnClick
+                    <Paper
+                        elevation={0}
+                        className="w-full shadow-none overflow-hidden"
                         sx={{
-                            border: 0,
-                            '& .MuiDataGrid-columnHeaders': {
-                                bgcolor: '#f8fafc',
-                                borderBottom: '1px solid #f1f5f9',
-                            },
-                            '& .MuiDataGrid-cell': {
-                                borderBottom: '1px solid #f1f5f9',
-                            },
-                            '& .MuiDataGrid-footerContainer': {
-                                borderTop: '1px solid #f1f5f9',
-                            },
+                            backdropFilter: 'blur(16px)',
+                            backgroundColor: 'rgba(15, 23, 42, 0.45)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            borderRadius: '1.25rem',
+                            overflow: 'hidden',
                         }}
-                    />
-                </Paper>
+                    >
+                        <DataGrid
+                            rows={filteredRows}
+                            columns={columns}
+                            getRowId={(row) => row.result_id}
+                            autoHeight
+                            checkboxSelection
+                            disableRowSelectionOnClick
+                            sx={{ border: 0 }}
+                        />
+                    </Paper>
+                </ScrollReveal>
             </Box>
         </DashboardLayout>
     );

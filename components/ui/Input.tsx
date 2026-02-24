@@ -21,26 +21,26 @@ const Input: React.FC<InputProps> = ({
     return (
         <div className="w-full">
             {label && (
-                <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor={inputId} className="block text-sm font-medium mb-1.5 ml-0.5" style={{ color: '#d1d5dc' }}>
                     {label}
                 </label>
             )}
             <div className="relative">
                 {leftIcon && (
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                         {leftIcon}
                     </div>
                 )}
                 <input
                     id={inputId}
                     className={`
-            block w-full rounded-lg border-gray-300 shadow-sm transition-all duration-200
-            focus:border-blue-500 focus:ring-blue-500
-            disabled:bg-gray-50 disabled:text-gray-500
+            block w-full rounded-xl border-white/5 bg-white/5 shadow-sm transition-all duration-300
+            focus:border-emerald-500/50 focus:ring-emerald-500/20 focus:bg-white/10
+            disabled:bg-white/2 disabled:text-slate-600
             ${leftIcon ? 'pl-10' : 'pl-4'}
             ${rightIcon ? 'pr-10' : 'pr-4'}
-            ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'}
-            py-2 text-gray-900 border
+            ${error ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : 'border-white/10'}
+            py-2.5 text-white border outline-none placeholder:text-slate-500
             ${className}
           `.trim()}
                     {...props}

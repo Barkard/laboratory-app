@@ -56,8 +56,8 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, exams, init
                 {/* General Information Section */}
                 <Stack spacing={3}>
                     <Stack direction="row" spacing={1} alignItems="center">
-                        <Icon name="info-circle" size="xs" color="#3b82f6" />
-                        <Typography variant="subtitle1" fontWeight={700} color="primary">Información General</Typography>
+                        <Icon name="info-circle" size="xs" color="#10b981" />
+                        <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">Información General</Typography>
                     </Stack>
 
                     <Input
@@ -79,7 +79,19 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, exams, init
                         fullWidth
                         required
                         slotProps={{
-                            input: { sx: { borderRadius: '0.75rem' } }
+                            input: {
+                                sx: {
+                                    borderRadius: '0.75rem',
+                                    color: 'white',
+                                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
+                                    bgcolor: 'rgba(255, 255, 255, 0.05)'
+                                }
+                            },
+                            inputLabel: {
+                                sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
+                            }
                         }}
                     >
                         {exams.map((exam) => (
@@ -98,13 +110,13 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, exams, init
                     />
                 </Stack>
 
-                <Divider />
+                <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.05)' }} />
 
                 {/* Dynamic Fields Section */}
                 <Stack spacing={3}>
                     <Stack direction="row" spacing={1} alignItems="center">
-                        <Icon name="test-tube" size="xs" color="#3b82f6" />
-                        <Typography variant="subtitle1" fontWeight={700} color="primary">Resultados del Examen</Typography>
+                        <Icon name="test-tube" size="xs" color="#10b981" />
+                        <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">Resultados del Examen</Typography>
                     </Stack>
 
                     {selectedExam && selectedExam.customFields && selectedExam.customFields.length > 0 ? (
@@ -114,10 +126,10 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, exams, init
                                     {field.type === 'checkbox' ? (
                                         <Box
                                             sx={{
-                                                p: 1.5,
-                                                bgcolor: '#f8fafc',
-                                                borderRadius: '0.75rem',
-                                                border: '1px solid #e2e8f0',
+                                                p: 2,
+                                                bgcolor: 'rgba(255, 255, 255, 0.03)',
+                                                borderRadius: '0.8rem',
+                                                border: '1px solid rgba(255, 255, 255, 0.08)',
                                                 display: 'flex',
                                                 alignItems: 'center'
                                             }}
@@ -130,8 +142,8 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, exams, init
                                                         color="primary"
                                                     />
                                                 }
-                                                label={<Typography variant="body2" fontWeight={500}>{field.label}</Typography>}
-                                                sx={{ m: 0 }}
+                                                label={<Typography variant="body2" fontWeight={500} color="#d1d5dc">{field.label}</Typography>}
+                                                sx={{ m: 0, '& .MuiCheckbox-root': { color: 'rgba(255, 255, 255, 0.3)', '&.Mui-checked': { color: '#10b981' } } }}
                                             />
                                         </Box>
                                     ) : field.type === 'select' ? (
@@ -143,7 +155,19 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, exams, init
                                             onChange={(e) => handleDynamicChange(field.id, e.target.value)}
                                             required
                                             slotProps={{
-                                                input: { sx: { borderRadius: '0.75rem' } }
+                                                input: {
+                                                    sx: {
+                                                        borderRadius: '0.75rem',
+                                                        color: 'white',
+                                                        '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                                                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
+                                                        bgcolor: 'rgba(255, 255, 255, 0.05)'
+                                                    }
+                                                },
+                                                inputLabel: {
+                                                    sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
+                                                }
                                             }}
                                         >
                                             {field.options?.map(opt => (
@@ -164,9 +188,9 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, exams, init
                             ))}
                         </Stack>
                     ) : (
-                        <Box sx={{ py: 4, px: 2, textAlign: 'center', bgcolor: '#f1f5f9', borderRadius: '1rem' }}>
-                            <Icon name="info-circle" size="md" color="#94a3b8" />
-                            <Typography variant="body2" color="text.secondary" mt={1}>
+                        <Box sx={{ py: 4, px: 2, textAlign: 'center', bgcolor: 'rgba(255, 255, 255, 0.02)', border: '1px dashed rgba(255, 255, 255, 0.1)', borderRadius: '1rem' }}>
+                            <Icon name="info-circle" size="md" color="rgba(255, 255, 255, 0.2)" />
+                            <Typography variant="body2" color="rgba(209, 213, 220, 0.4)" mt={2}>
                                 Seleccione un examen con campos configurados para ingresar resultados.
                             </Typography>
                         </Box>
@@ -174,17 +198,20 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, exams, init
                 </Stack>
 
                 {/* Footer Actions */}
-                <Stack direction="row" spacing={2} justifyContent="flex-end" pt={2}>
+                <Stack direction="row" spacing={2} justifyContent="flex-end" pt={4}>
                     <Button
                         variant="outlined"
                         onClick={onCancel}
                         sx={{
-                            borderRadius: '0.75rem',
+                            borderRadius: '0.8rem',
                             textTransform: 'none',
                             px: 4,
-                            color: '#64748b',
-                            borderColor: '#e2e8f0',
-                            '&:hover': { bgcolor: '#f8fafc', borderColor: '#cbd5e1' }
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            '&:hover': {
+                                borderColor: 'rgba(255, 255, 255, 0.2)',
+                                bgcolor: 'rgba(255, 255, 255, 0.05)'
+                            }
                         }}
                     >
                         Cancelar
@@ -193,11 +220,15 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, exams, init
                         type="submit"
                         variant="contained"
                         sx={{
-                            borderRadius: '0.75rem',
+                            borderRadius: '0.8rem',
                             textTransform: 'none',
                             px: 4,
-                            boxShadow: 'none',
-                            '&:hover': { boxShadow: 'none' }
+                            bgcolor: '#10b981',
+                            boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
+                            '&:hover': {
+                                bgcolor: '#059669',
+                                boxShadow: '0 6px 20px rgba(16, 185, 129, 0.23)',
+                            }
                         }}
                     >
                         {initialData ? 'Actualizar Resultado' : 'Subir Resultado'}

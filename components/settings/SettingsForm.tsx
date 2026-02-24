@@ -1,22 +1,21 @@
 'use client';
 
 import React from 'react';
-import { Box, Stack, Button, Typography } from '@mui/material';
+import { Box, Stack, Button, Typography, Paper } from '@mui/material';
 import Icon from '../ui/Icon';
 import Input from '../ui/Input';
 import { User } from '@/types';
 
-interface UserFormProps {
-    onSubmit: (user: Partial<User>) => void;
-    onCancel: () => void;
-    initialData?: Partial<User>;
+interface SettingsFormProps {
+    user: User;
+    onSubmit: (updatedUser: Partial<User>) => void;
 }
 
-const UserForm: React.FC<UserFormProps> = ({ onSubmit, onCancel, initialData }) => {
+const SettingsForm: React.FC<SettingsFormProps> = ({ user, onSubmit }) => {
     const [formData, setFormData] = React.useState<Partial<User>>({
-        identity_card: initialData?.identity_card || '',
-        first_name: initialData?.first_name || '',
-        last_name: initialData?.last_name || '',
+        identity_card: user.identity_card,
+        first_name: user.first_name,
+        last_name: user.last_name,
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,7 +34,7 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onCancel, initialData }) 
                 <Stack spacing={3}>
                     <Stack direction="row" spacing={1} alignItems="center">
                         <Icon name="user-detail" size="xs" color="#10b981" />
-                        <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">Datos Personales</Typography>
+                        <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">Información del Perfil</Typography>
                     </Stack>
 
                     <Input
@@ -69,38 +68,23 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onCancel, initialData }) 
 
                 <Stack direction="row" spacing={2} justifyContent="flex-end" pt={2}>
                     <Button
-                        variant="outlined"
-                        onClick={onCancel}
-                        sx={{
-                            borderRadius: '0.8rem',
-                            textTransform: 'none',
-                            px: 4,
-                            color: 'rgba(255, 255, 255, 0.6)',
-                            borderColor: 'rgba(255, 255, 255, 0.1)',
-                            '&:hover': {
-                                borderColor: 'rgba(255, 255, 255, 0.2)',
-                                bgcolor: 'rgba(255, 255, 255, 0.05)'
-                            }
-                        }}
-                    >
-                        Cancelar
-                    </Button>
-                    <Button
                         type="submit"
                         variant="contained"
                         sx={{
                             borderRadius: '0.8rem',
                             textTransform: 'none',
-                            px: 4,
+                            px: 6,
+                            py: 1.2,
                             bgcolor: '#10b981',
                             boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
+                            fontWeight: 600,
                             '&:hover': {
                                 bgcolor: '#059669',
                                 boxShadow: '0 6px 20px rgba(16, 185, 129, 0.23)',
                             }
                         }}
                     >
-                        {initialData ? 'Guardar Cambios' : 'Registrar Paciente'}
+                        Actualizar Perfil
                     </Button>
                 </Stack>
             </Stack>
@@ -108,4 +92,4 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onCancel, initialData }) 
     );
 };
 
-export default UserForm;
+export default SettingsForm;

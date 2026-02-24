@@ -20,7 +20,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ href, icon, label, active }) 
             : 'text-slate-400 hover:bg-white/5 hover:text-sky-400 hover:translate-x-1'
             }`}
     >
-        <Icon name={icon} type={active ? 'solid' : 'regular'} size="sm" />
+        <Icon name={icon} size="sm" />
         <span className="font-semibold">{label}</span>
     </Link>
 );
@@ -35,8 +35,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     return (
         <aside
             className={`
-                fixed inset-y-0 left-0 z-30 w-64 bg-slate-950/40 backdrop-blur-xl border-r border-white/5 flex flex-col h-screen transition-transform duration-300 transform
-                lg:translate-x-0 lg:static lg:inset-0
+                fixed inset-y-0 left-0 z-30 w-64 bg-slate-950/65  backdrop-blur-xl border-r border-white/5 flex flex-col h-screen transition-transform duration-300 transform
+                lg:translate-x-0 lg:static lg:inset-0 
                 ${isOpen ? 'translate-x-0' : '-translate-x-full'}
             `}
         >
@@ -63,7 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
                     />
                     <SidebarItem
                         href="/dashboard/exams"
-                        icon="vial"
+                        icon="book"
                         label="Exámenes"
                         active={pathname === '/dashboard/exams'}
                     />
@@ -75,7 +75,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
                     />
                     <SidebarItem
                         href="/dashboard/users"
-                        icon="group"
+                        icon="user"
                         label="Usuarios"
                         active={pathname === '/dashboard/users'}
                     />

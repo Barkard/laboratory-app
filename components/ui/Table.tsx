@@ -38,28 +38,25 @@ const Table = <T extends { [key: string]: any }>({
     return (
         <TableContainer
             component={Paper}
-            variant="outlined"
-            sx={{
-                borderRadius: '1rem',
-                overflow: 'hidden',
-                borderColor: '#f1f5f9',
-                boxShadow: 'none'
-            }}
+            elevation={0}
+            className="rounded-2xl overflow-hidden shadow-none"
         >
             <MuiTable sx={{ minWidth: 650 }}>
-                <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                <TableHead className="bg-white/5">
                     <TableRow>
                         {columns.map((column, index) => (
                             <TableCell
                                 key={index}
                                 sx={{
                                     fontWeight: 700,
-                                    color: 'text.secondary',
+                                    color: 'slate-400',
                                     fontSize: '0.75rem',
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.05em',
-                                    py: 2
+                                    py: 2.5,
+                                    borderBottom: '1px solid rgba(255, 255, 255, 0.05)'
                                 }}
+                                className="text-slate-400"
                             >
                                 {column.header}
                             </TableCell>
@@ -69,10 +66,10 @@ const Table = <T extends { [key: string]: any }>({
                 <TableBody>
                     {isLoading ? (
                         <TableRow>
-                            <TableCell colSpan={columns.length} align="center" sx={{ py: 10 }}>
+                            <TableCell colSpan={columns.length} align="center" sx={{ py: 10, border: 0 }}>
                                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                                    <CircularProgress size={24} />
-                                    <Typography variant="body2" color="text.secondary">
+                                    <CircularProgress size={24} sx={{ color: '#38bdf8' }} />
+                                    <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
                                         Cargando datos...
                                     </Typography>
                                 </Box>
@@ -80,8 +77,8 @@ const Table = <T extends { [key: string]: any }>({
                         </TableRow>
                     ) : data.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={columns.length} align="center" sx={{ py: 10 }}>
-                                <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                            <TableCell colSpan={columns.length} align="center" sx={{ py: 10, border: 0 }}>
+                                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', fontStyle: 'italic' }}>
                                     {emptyMessage}
                                 </Typography>
                             </TableCell>
@@ -91,14 +88,20 @@ const Table = <T extends { [key: string]: any }>({
                             <TableRow
                                 key={rowIndex}
                                 onClick={() => onRowClick && onRowClick(item)}
+                                className={`
+                                    transition-all duration-300
+                                    ${onRowClick ? 'cursor-pointer hover:bg-white/5' : 'cursor-default'}
+                                `}
                                 sx={{
-                                    cursor: onRowClick ? 'pointer' : 'default',
-                                    '&:hover': { bgcolor: '#f8fafc' },
-                                    transition: 'background-color 0.2s'
+                                    '& td': { borderBottom: '1px solid rgba(255, 255, 255, 0.03)' },
+                                    '&:last-child td': { borderBottom: 0 }
                                 }}
                             >
                                 {columns.map((column, colIndex) => (
-                                    <TableCell key={colIndex} sx={{ py: 2 }}>
+                                    <TableCell
+                                        key={colIndex}
+                                        sx={{ py: 2, color: 'white' }}
+                                    >
                                         {typeof column.accessor === 'function'
                                             ? column.accessor(item)
                                             : item[column.accessor as string]}

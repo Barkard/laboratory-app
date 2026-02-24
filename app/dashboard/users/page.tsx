@@ -3,6 +3,7 @@
 import React from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Icon from '@/components/ui/Icon';
+import ScrollReveal from '@/components/ui/ScrollReveal';
 import { User } from '@/types';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
@@ -120,11 +121,28 @@ export default function UsersPage() {
                     mb={4}
                 >
                     <Box>
-                        <Typography variant="h5" fontWeight={700}>
-                            Gestión de Usuarios
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            Administre los pacientes registrados en el sistema.
+                        <Stack direction="row" spacing={2} alignItems="center">
+                            <Box sx={{
+                                width: 40,
+                                height: 40,
+                                bgcolor: '#34d399', // emerald-400
+                                borderRadius: '0.75rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 0 15px rgba(52, 211, 153, 0.4)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                zIndex: 10,
+                                position: 'relative'
+                            }}>
+                                <Icon name="user" size="xs" color="white" />
+                            </Box>
+                            <Typography variant="h5" fontWeight={700} color="white">
+                                Gestión de Pacientes
+                            </Typography>
+                        </Stack>
+                        <Typography variant="body2" color="#d1d5dc" sx={{ mt: 1.5, ml: 0.5 }}>
+                            Administre el registro de pacientes del laboratorio.
                         </Typography>
                     </Box>
                     <Stack direction="row" spacing={2}>
@@ -160,57 +178,56 @@ export default function UsersPage() {
                     />
                 </Modal>
 
-                <Box mb={3}>
-                    <TextField
-                        fullWidth
-                        placeholder="Buscar por nombre o cédula..."
-                        variant="outlined"
-                        size="small"
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <Icon name="search" size="xs" color="#94a3b8" />
-                                </InputAdornment>
-                            ),
-                            sx: { borderRadius: '0.75rem', bgcolor: 'white' }
-                        }}
-                        sx={{ maxWidth: 400 }}
-                    />
-                </Box>
+                <ScrollReveal delay={200}>
+                    <Box mb={3}>
+                        <TextField
+                            fullWidth
+                            placeholder="Buscar por nombre o indentificación..."
+                            variant="outlined"
+                            size="small"
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <Icon name="search" size="xs" color="#94a3b8" />
+                                    </InputAdornment>
+                                ),
+                            }}
+                            sx={{ maxWidth: 400 }}
+                        />
+                    </Box>
 
-                <Paper sx={{ width: '100%', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
-                    <DataGrid
-                        rows={rows}
-                        columns={columns}
-                        getRowId={(row) => row.user_id}
-                        initialState={{
-                            pagination: {
-                                paginationModel: { page: 0, pageSize: 5 },
-                            },
-                        }}
-                        pageSizeOptions={[5, 10]}
-                        checkboxSelection
-                        onRowSelectionModelChange={(newSelection) => {
-                            setSelectionModel(newSelection);
-                        }}
-                        rowSelectionModel={selectionModel}
-                        disableRowSelectionOnClick
-                        autoHeight
+                    <Paper
+                        elevation={0}
+                        className="w-full shadow-none overflow-hidden"
                         sx={{
-                            border: 0,
-                            '& .MuiDataGrid-columnHeaders': {
-                                bgcolor: '#f8fafc',
-                                borderBottom: '1px solid #f1f5f9',
-                            },
-                            '& .MuiDataGrid-cell': {
-                                borderBottom: '1px solid #f1f5f9',
-                            },
-                            '& .MuiDataGrid-footerContainer': {
-                                borderTop: '1px solid #f1f5f9',
-                            },
+                            backdropFilter: 'blur(16px)',
+                            backgroundColor: 'rgba(15, 23, 42, 0.45)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            borderRadius: '1.25rem',
+                            overflow: 'hidden',
                         }}
-                    />
-                </Paper>
+                    >
+                        <DataGrid
+                            rows={rows}
+                            columns={columns}
+                            getRowId={(row) => row.user_id}
+                            initialState={{
+                                pagination: {
+                                    paginationModel: { page: 0, pageSize: 5 },
+                                },
+                            }}
+                            pageSizeOptions={[5, 10]}
+                            checkboxSelection
+                            onRowSelectionModelChange={(newSelection) => {
+                                setSelectionModel(newSelection);
+                            }}
+                            rowSelectionModel={selectionModel}
+                            disableRowSelectionOnClick
+                            autoHeight
+                            sx={{ border: 0 }}
+                        />
+                    </Paper>
+                </ScrollReveal>
 
                 <ConfirmModal
                     open={confirmModal.open}

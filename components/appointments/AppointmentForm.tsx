@@ -56,8 +56,8 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
                 {/* Section: Patient Info */}
                 <Stack spacing={3}>
                     <Stack direction="row" spacing={1} alignItems="center">
-                        <Icon name="user-circle" size="xs" color="#3b82f6" />
-                        <Typography variant="subtitle1" fontWeight={700} color="primary">Información del Paciente</Typography>
+                        <Icon name="user-circle" size="xs" color="#10b981" />
+                        <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">Información del Paciente</Typography>
                     </Stack>
 
                     <Autocomplete
@@ -76,8 +76,17 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
                                 fullWidth
                                 slotProps={{
                                     input: {
-                                        ...params.InputProps,
-                                        sx: { borderRadius: '0.75rem' }
+                                        sx: {
+                                            borderRadius: '0.75rem',
+                                            color: 'white',
+                                            '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
+                                            bgcolor: 'rgba(255, 255, 255, 0.05)'
+                                        }
+                                    },
+                                    inputLabel: {
+                                        sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
                                     }
                                 }}
                             />
@@ -85,13 +94,13 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
                     />
                 </Stack>
 
-                <Divider />
+                <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.05)' }} />
 
                 {/* Section: Service Details */}
                 <Stack spacing={3}>
                     <Stack direction="row" spacing={1} alignItems="center">
-                        <Icon name="vial" size="xs" color="#3b82f6" />
-                        <Typography variant="subtitle1" fontWeight={700} color="primary">Detalles del Servicio</Typography>
+                        <Icon name="vial" size="xs" color="#10b981" />
+                        <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">Detalles del Servicio</Typography>
                     </Stack>
 
                     <Autocomplete
@@ -123,7 +132,17 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
                                 slotProps={{
                                     input: {
                                         ...params.InputProps,
-                                        sx: { borderRadius: '0.75rem' }
+                                        sx: {
+                                            borderRadius: '0.75rem',
+                                            color: 'white',
+                                            '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
+                                            bgcolor: 'rgba(255, 255, 255, 0.05)'
+                                        }
+                                    },
+                                    inputLabel: {
+                                        sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
                                     }
                                 }}
                             />
@@ -153,10 +172,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
                 {/* Section: Admin Info (Only if editing or status needs change) */}
                 {initialData && (
                     <Stack spacing={3}>
-                        <Divider />
+                        <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.05)' }} />
                         <Stack direction="row" spacing={1} alignItems="center">
-                            <Icon name="cog" size="xs" color="#64748b" />
-                            <Typography variant="subtitle1" fontWeight={700} color="text.secondary">Estado de la Cita</Typography>
+                            <Icon name="cog" size="xs" color="#94a3b8" />
+                            <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">Estado de la Cita</Typography>
                         </Stack>
                         <TextField
                             select
@@ -166,7 +185,19 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
                             onChange={handleChange}
                             fullWidth
                             slotProps={{
-                                input: { sx: { borderRadius: '0.75rem' } }
+                                input: {
+                                    sx: {
+                                        borderRadius: '0.75rem',
+                                        color: 'white',
+                                        '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
+                                        bgcolor: 'rgba(255, 255, 255, 0.05)'
+                                    }
+                                },
+                                inputLabel: {
+                                    sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
+                                }
                             }}
                         >
                             <MenuItem value="Pending">Pendiente</MenuItem>
@@ -176,11 +207,21 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
                     </Stack>
                 )}
 
-                <Stack direction="row" spacing={2} justifyContent="flex-end" pt={2}>
+                <Stack direction="row" spacing={2} justifyContent="flex-end" pt={4}>
                     <Button
                         variant="outlined"
                         onClick={onCancel}
-                        sx={{ borderRadius: '0.75rem', textTransform: 'none', px: 4, color: '#64748b', borderColor: '#e2e8f0' }}
+                        sx={{
+                            borderRadius: '0.8rem',
+                            textTransform: 'none',
+                            px: 4,
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            '&:hover': {
+                                borderColor: 'rgba(255, 255, 255, 0.2)',
+                                bgcolor: 'rgba(255, 255, 255, 0.05)'
+                            }
+                        }}
                     >
                         Cancelar
                     </Button>
@@ -188,11 +229,15 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
                         type="submit"
                         variant="contained"
                         sx={{
-                            borderRadius: '0.75rem',
+                            borderRadius: '0.8rem',
                             textTransform: 'none',
                             px: 4,
-                            boxShadow: 'none',
-                            '&:hover': { boxShadow: 'none' }
+                            bgcolor: '#10b981',
+                            boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
+                            '&:hover': {
+                                bgcolor: '#059669',
+                                boxShadow: '0 6px 20px rgba(16, 185, 129, 0.23)',
+                            }
                         }}
                     >
                         {initialData ? 'Guardar Cambios' : 'Agendar Cita'}

@@ -83,7 +83,10 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
             <Stack spacing={4}>
                 {/* Basic Information */}
                 <Stack spacing={3}>
-                    <Typography variant="subtitle1" fontWeight={700} color="primary">Categoría del Examen</Typography>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                        <Icon name="category" size="xs" color="#10b981" />
+                        <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">Categoría del Examen</Typography>
+                    </Stack>
 
                     {!isAddingType ? (
                         <Stack direction="row" spacing={1} alignItems="flex-start">
@@ -96,7 +99,19 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                                 required
                                 helperText="El nombre del examen será el mismo que el tipo seleccionado."
                                 slotProps={{
-                                    input: { sx: { borderRadius: '0.75rem' } }
+                                    input: {
+                                        sx: {
+                                            borderRadius: '0.75rem',
+                                            color: 'white',
+                                            '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
+                                            bgcolor: 'rgba(255, 255, 255, 0.05)'
+                                        }
+                                    },
+                                    inputLabel: {
+                                        sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
+                                    }
                                 }}
                                 sx={{ flex: 1 }}
                             >
@@ -110,9 +125,9 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                                 onClick={() => setIsAddingType(true)}
                                 sx={{
                                     mt: 1,
-                                    bgcolor: '#eff6ff',
-                                    color: '#3b82f6',
-                                    '&:hover': { bgcolor: '#dbeafe' }
+                                    bgcolor: 'rgba(16, 185, 129, 0.1)',
+                                    color: '#10b981',
+                                    '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.2)' }
                                 }}
                             >
                                 <Icon name="plus" size="xs" />
@@ -146,8 +161,9 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                                     borderRadius: '0.5rem',
                                     textTransform: 'none',
                                     alignSelf: 'flex-start',
+                                    bgcolor: '#10b981',
                                     boxShadow: 'none',
-                                    '&:hover': { boxShadow: 'none' }
+                                    '&:hover': { bgcolor: '#059669', boxShadow: 'none' }
                                 }}
                             >
                                 Guardar nombre de examen
@@ -156,29 +172,38 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                     )}
                 </Stack>
 
-                <Divider />
+                <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.05)' }} />
 
                 {/* Custom Fields Builder */}
                 <Stack spacing={2}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Box>
-                            <Typography variant="subtitle1" fontWeight={700} color="primary">Campos del Formulario</Typography>
-                            <Typography variant="caption" color="text.secondary">Defina los campos que se llenarán al registrar resultados.</Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Icon name="list-plus" size="xs" color="#10b981" />
+                                <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">Campos del Formulario</Typography>
+                            </Stack>
+                            <Typography variant="caption" color="rgba(209, 213, 220, 0.6)">Defina los campos que se llenarán al registrar resultados.</Typography>
                         </Box>
                         <Button
                             variant="outlined"
                             startIcon={<Icon name="plus" size="xs" />}
                             onClick={addField}
                             size="small"
-                            sx={{ borderRadius: '0.5rem', textTransform: 'none' }}
+                            sx={{
+                                borderRadius: '0.5rem',
+                                textTransform: 'none',
+                                color: '#10b981',
+                                borderColor: 'rgba(16, 185, 129, 0.3)',
+                                '&:hover': { borderColor: '#10b981', bgcolor: 'rgba(16, 185, 129, 0.05)' }
+                            }}
                         >
                             Añadir Campo
                         </Button>
                     </Stack>
 
                     {fields.length === 0 ? (
-                        <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', bgcolor: '#f8fafc', borderStyle: 'dashed' }}>
-                            <Typography variant="body2" color="text.secondary">No hay campos personalizados definidos.</Typography>
+                        <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', bgcolor: 'rgba(255, 255, 255, 0.02)', borderStyle: 'dashed', borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '1rem' }}>
+                            <Typography variant="body2" color="rgba(209, 213, 220, 0.5)">No hay campos personalizados definidos.</Typography>
                         </Paper>
                     ) : (
                         <Stack spacing={2}>
@@ -186,7 +211,13 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                                 <Paper
                                     key={field.id}
                                     variant="outlined"
-                                    sx={{ p: 2, borderRadius: '0.75rem', position: 'relative', bgcolor: '#fdfdfd' }}
+                                    sx={{
+                                        p: 3,
+                                        borderRadius: '1rem',
+                                        position: 'relative',
+                                        bgcolor: 'rgba(255, 255, 255, 0.03)',
+                                        borderColor: 'rgba(255, 255, 255, 0.08)'
+                                    }}
                                 >
                                     <Stack spacing={2}>
                                         <Stack direction="row" spacing={2} alignItems="flex-start">
@@ -201,12 +232,19 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                                             </Box>
                                             <Box sx={{ width: 140 }}>
                                                 <FormControl fullWidth size="small">
-                                                    <InputLabel sx={{ mt: 1.2 }}>Tipo</InputLabel>
+                                                    <InputLabel sx={{ color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }}>Tipo</InputLabel>
                                                     <Select
                                                         value={field.type}
                                                         label="Tipo"
                                                         onChange={(e) => updateField(field.id, { type: e.target.value as any })}
-                                                        sx={{ borderRadius: '0.5rem', mt: 1.2 }}
+                                                        sx={{
+                                                            borderRadius: '0.6rem',
+                                                            color: 'white',
+                                                            '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                                                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
+                                                            bgcolor: 'rgba(255, 255, 255, 0.02)'
+                                                        }}
                                                     >
                                                         <MenuItem value="text">Texto</MenuItem>
                                                         <MenuItem value="number">Número</MenuItem>
@@ -242,11 +280,21 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                 </Stack>
 
                 {/* Footer Actions */}
-                <Stack direction="row" spacing={2} justifyContent="flex-end" pt={2}>
+                <Stack direction="row" spacing={2} justifyContent="flex-end" pt={4}>
                     <Button
                         variant="outlined"
                         onClick={onCancel}
-                        sx={{ borderRadius: '0.75rem', textTransform: 'none', px: 4, color: '#64748b', borderColor: '#e2e8f0' }}
+                        sx={{
+                            borderRadius: '0.8rem',
+                            textTransform: 'none',
+                            px: 4,
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            '&:hover': {
+                                borderColor: 'rgba(255, 255, 255, 0.2)',
+                                bgcolor: 'rgba(255, 255, 255, 0.05)'
+                            }
+                        }}
                     >
                         Cancelar
                     </Button>
@@ -254,11 +302,15 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                         type="submit"
                         variant="contained"
                         sx={{
-                            borderRadius: '0.75rem',
+                            borderRadius: '0.8rem',
                             textTransform: 'none',
                             px: 4,
-                            boxShadow: 'none',
-                            '&:hover': { boxShadow: 'none' }
+                            bgcolor: '#10b981',
+                            boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
+                            '&:hover': {
+                                bgcolor: '#059669',
+                                boxShadow: '0 6px 20px rgba(16, 185, 129, 0.23)',
+                            }
                         }}
                     >
                         {initialData ? 'Guardar Cambios' : 'Registrar Examen'}
