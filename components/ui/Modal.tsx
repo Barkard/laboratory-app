@@ -58,7 +58,7 @@ const Modal: React.FC<ModalProps> = ({
                 borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                 bgcolor: 'rgba(15, 23, 42, 0.3)'
             }}>
-                <Typography variant="h6" fontWeight={700} color="#d1d5dc">
+                <Typography variant="h6" component="span" fontWeight={700} color="#d1d5dc">
                     {title}
                 </Typography>
                 <IconButton
@@ -77,7 +77,25 @@ const Modal: React.FC<ModalProps> = ({
                 </IconButton>
             </DialogTitle>
 
-            <DialogContent sx={{ p: 4, mt: 1 }}>
+            <DialogContent sx={{
+                p: 4,
+                mt: 1,
+                maxHeight: '70vh',
+                overflowY: 'auto',
+                '&::-webkit-scrollbar': {
+                    width: '8px',
+                },
+                '&::-webkit-scrollbar-track': {
+                    background: 'rgba(255, 255, 255, 0.05)',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb:hover': {
+                    background: 'rgba(255, 255, 255, 0.2)',
+                },
+            }}>
                 <Box>
                     {children}
                 </Box>

@@ -100,6 +100,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                     </Button>
                     <Button
                         fullWidth
+                        autoFocus
                         variant="contained"
                         color={color}
                         onClick={() => {

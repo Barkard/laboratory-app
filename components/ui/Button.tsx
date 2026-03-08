@@ -4,6 +4,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
     size?: 'sm' | 'md' | 'lg';
     isLoading?: boolean;
+    fullWidth?: boolean;
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
 }
@@ -13,6 +14,7 @@ const Button: React.FC<ButtonProps> = ({
     variant = 'primary',
     size = 'md',
     isLoading = false,
+    fullWidth = false,
     leftIcon,
     rightIcon,
     className = '',
@@ -20,6 +22,7 @@ const Button: React.FC<ButtonProps> = ({
     ...props
 }) => {
     const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-300 transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none';
+    const widthStyles = fullWidth ? 'w-full' : '';
 
     const variants = {
         primary: 'bg-linear-to-br from-sky-400 to-sky-600 text-white shadow-lg shadow-sky-200 hover:shadow-sky-300 hover:-translate-y-0.5',
@@ -35,7 +38,7 @@ const Button: React.FC<ButtonProps> = ({
         lg: 'px-8 py-3.5 text-lg',
     };
 
-    const combinedClasses = `${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`.trim();
+    const combinedClasses = `${baseStyles} ${widthStyles} ${variants[variant]} ${sizes[size]} ${className}`.trim();
 
     return (
         <button

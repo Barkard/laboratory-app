@@ -27,28 +27,46 @@ interface DynamicField {
 }
 
 interface ExamFormProps {
-    onSubmit: (exam: Partial<Exam & { customFields: DynamicField[] }>) => void;
+    onSubmit: (exam: Partial<Exam & { name?: string; customFields: DynamicField[] }>) => void;
     onCancel: () => void;
     examTypes: ExamType[];
-    onAddType: (name: string) => void;
+    onAddType: (name: string, requirements: string) => Promise<number | undefined>;
     initialData?: Partial<Exam & { customFields: DynamicField[] }>;
 }
 
 const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAddType, initialData }) => {
-    const [typeId, setTypeId] = React.useState(initialData?.type_id || (examTypes.length > 0 ? examTypes[0].type_id : 0));
-    const [fields, setFields] = React.useState<DynamicField[]>(initialData?.customFields || []);
+    // Helper to get initial fields
+    const getInitialFields = () => {
+        if (initialData?.customFields) return initialData.customFields;
+        if (initialData?.custom_files?.json_schema) {
+            try {
+                return JSON.parse(initialData.custom_files.json_schema);
+            } catch (e) {
+                console.error('Error parsing initial fields:', e);
+                return [];
+            }
+        }
+        return [];
+    };
+
+    const [typeId, setTypeId] = React.useState(initialData?.id_type || (examTypes.length > 0 ? examTypes[0].id_type : 0));
+    const [fields, setFields] = React.useState<DynamicField[]>(getInitialFields());
 
     // New type creation state
     const [isAddingType, setIsAddingType] = React.useState(false);
     const [newTypeName, setNewTypeName] = React.useState('');
+    const [requirements, setRequirements] = React.useState('');
+    const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
 
-    const handleSaveNewType = () => {
+    const handleSaveNewType = async () => {
         if (!newTypeName.trim()) return;
-        const nextId = Math.max(...examTypes.map(t => t.type_id), 0) + 1;
-        onAddType(newTypeName);
-        setTypeId(nextId);
-        setNewTypeName('');
-        setIsAddingType(false);
+        const newId = await onAddType(newTypeName, requirements);
+        if (newId) {
+            setTypeId(newId);
+            setNewTypeName('');
+            setRequirements('');
+            setIsAddingType(false);
+        }
     };
 
     const addField = () => {
@@ -70,10 +88,10 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const selectedType = examTypes.find(t => t.type_id === typeId);
+        const selectedType = examTypes.find(t => t.id_type === typeId);
         onSubmit({
             name: selectedType?.category_name || '',
-            type_id: typeId,
+            id_type: typeId,
             customFields: fields
         });
     };
@@ -116,7 +134,7 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                                 sx={{ flex: 1 }}
                             >
                                 {examTypes.map((type) => (
-                                    <MenuItem key={type.type_id} value={type.type_id}>
+                                    <MenuItem key={type.id_type} value={type.id_type}>
                                         {type.category_name}
                                     </MenuItem>
                                 ))}
@@ -143,6 +161,28 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                                         value={newTypeName}
                                         onChange={(e) => setNewTypeName(e.target.value)}
                                         autoFocus
+                                    />
+                                </Box>
+                                <Box flex={2}>
+                                    <TextField
+                                        label="Requisitos / Notas (Opcional)"
+                                        placeholder="Ej. Ir en ayunas, traer muestra de la mañana..."
+                                        value={requirements}
+                                        onChange={(e) => setRequirements(e.target.value)}
+                                        multiline
+                                        rows={2}
+                                        fullWidth
+                                        variant="outlined"
+                                        InputProps={{
+                                            sx: {
+                                                borderRadius: '0.75rem',
+                                                bgcolor: '#f8fafc',
+                                                '&:hover': { bgcolor: '#f1f5f9' },
+                                            }
+                                        }}
+                                        InputLabelProps={{
+                                            sx: { color: '#64748b', fontWeight: 500 }
+                                        }}
                                     />
                                 </Box>
                                 <IconButton
@@ -184,21 +224,52 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                             </Stack>
                             <Typography variant="caption" color="rgba(209, 213, 220, 0.6)">Defina los campos que se llenarán al registrar resultados.</Typography>
                         </Box>
-                        <Button
-                            variant="outlined"
-                            startIcon={<Icon name="plus" size="xs" />}
-                            onClick={addField}
-                            size="small"
-                            sx={{
-                                borderRadius: '0.5rem',
-                                textTransform: 'none',
-                                color: '#10b981',
-                                borderColor: 'rgba(16, 185, 129, 0.3)',
-                                '&:hover': { borderColor: '#10b981', bgcolor: 'rgba(16, 185, 129, 0.05)' }
-                            }}
-                        >
-                            Añadir Campo
-                        </Button>
+                        <Stack spacing={1} sx={{ minWidth: 200 }}>
+                            <Button
+                                variant="outlined"
+                                startIcon={<Icon name="plus" size="xs" />}
+                                onClick={addField}
+                                size="small"
+                                fullWidth
+                                sx={{
+                                    borderRadius: '0.5rem',
+                                    textTransform: 'none',
+                                    color: '#10b981',
+                                    borderColor: 'rgba(16, 185, 129, 0.3)',
+                                    '&:hover': { borderColor: '#10b981', bgcolor: 'rgba(16, 185, 129, 0.05)' }
+                                }}
+                            >
+                                Añadir Campo
+                            </Button>
+                            {fields.length > 0 && (
+                                <Button
+                                    variant="contained"
+                                    startIcon={<Icon name="save" size="xs" />}
+                                    onClick={() => {
+                                        setSuccessMessage('Campos configurados correctamente');
+                                        setTimeout(() => setSuccessMessage(null), 3000);
+                                    }}
+                                    size="small"
+                                    fullWidth
+                                    sx={{
+                                        borderRadius: '0.5rem',
+                                        textTransform: 'none',
+                                        bgcolor: 'rgba(16, 185, 129, 0.2)',
+                                        color: '#10b981',
+                                        boxShadow: 'none',
+                                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                                        '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.3)', boxShadow: 'none' }
+                                    }}
+                                >
+                                    Guardar Configuración
+                                </Button>
+                            )}
+                            {successMessage && (
+                                <Typography variant="caption" sx={{ color: '#10b981', textAlign: 'center', display: 'block', mt: 0.5 }}>
+                                    {successMessage}
+                                </Typography>
+                            )}
+                        </Stack>
                     </Stack>
 
                     {fields.length === 0 ? (

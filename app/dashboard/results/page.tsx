@@ -4,83 +4,22 @@ import React from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Icon from '@/components/ui/Icon';
 import ScrollReveal from "@/components/ui/ScrollReveal";
-import { Result, Exam, DynamicField } from '@/types';
+import { Result, Exam, DynamicField, Appointment } from '@/types';
 import { formatDateTime } from '@/utils/formatters';
-import {
-    Box,
-    Typography,
-    Button,
-    TextField,
-    InputAdornment,
-    IconButton,
-    Stack,
-    Paper,
-    Chip,
-    Tooltip,
-    Divider
-} from '@mui/material';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import ResultForm from '@/components/results/ResultForm';
 import { DataGrid, GridColDef, GridRowSelectionModel, GridRenderCellParams } from '@mui/x-data-grid';
+import { apiFetch } from '@/utils/api';
 
 // Mock exams with custom fields for testing
-const mockExams: Exam[] = [
-    {
-        exam_id: 1,
-        name: 'Hematología',
-        type_id: 1,
-        file_id: 1,
-        customFields: [
-            { id: 'h1', label: 'Hemoglobina (g/dL)', type: 'number' },
-            { id: 'h2', label: 'Hematocrito (%)', type: 'number' },
-            { id: 'h3', label: 'Observaciones', type: 'text' }
-        ]
-    },
-    {
-        exam_id: 2,
-        name: 'Bioquímica',
-        type_id: 2,
-        file_id: 1,
-        customFields: [
-            { id: 'b1', label: 'Glucosa (mg/dL)', type: 'number' },
-            { id: 'b2', label: 'Colesterol Total', type: 'number' },
-            { id: 'b3', label: 'Estado', type: 'select', options: ['Normal', 'Elevado', 'Crítico'] }
-        ]
-    },
-    {
-        exam_id: 3,
-        name: 'Inmunología',
-        type_id: 3,
-        file_id: 2,
-        customFields: [
-            { id: 'i1', label: 'Resultado VIH', type: 'select', options: ['No Reactivo', 'Reactivo'] },
-            { id: 'i2', label: 'Confirmado', type: 'checkbox' }
-        ]
-    },
-];
-
-const resultsData: (Result & { patient_name: string, exam_type: string })[] = [
-    {
-        result_id: 1,
-        appointment_detail_id: 101,
-        delivery_date: '2026-02-21T16:00:00',
-        patient_name: 'Leon Pineda',
-        exam_type: 'Hematología',
-        data: { 'h1': '14.5', 'h2': '42', 'h3': 'Sin anomalías' }
-    },
-    {
-        result_id: 2,
-        appointment_detail_id: 102,
-        delivery_date: '2026-02-22T09:00:00',
-        patient_name: 'Maria Garcia',
-        exam_type: 'Bioquímica',
-        data: { 'b1': '95', 'b2': '180', 'b3': 'Normal' }
-    },
-];
+const mockExams: Exam[] = [];
+const resultsData: any[] = [];
 
 export default function ResultsPage() {
-    const [rows, setRows] = React.useState(resultsData);
+    const [rows, setRows] = React.useState<any[]>([]);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const [appointments, setAppointments] = React.useState<Appointment[]>([]);
     const [selectionModel, setSelectionModel] = React.useState<GridRowSelectionModel>({
         type: 'include',
         ids: new Set()
@@ -99,6 +38,59 @@ export default function ResultsPage() {
         onConfirm: () => { }
     });
 
+    const router = React.useMemo(() => typeof window !== 'undefined' ? require('next/navigation').useRouter() : null, []);
+
+    React.useEffect(() => {
+        const storedUser = localStorage.getItem('lab_user');
+        if (storedUser) {
+            try {
+                const user = JSON.parse(storedUser);
+                if (user.id_role !== 1 && router) {
+                    router.push('/dashboard/patient');
+                }
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+            }
+        }
+        fetchData();
+    }, [router]);
+
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const [resultsData, appsData] = await Promise.all([
+                apiFetch<Result[]>('/results'),
+                apiFetch<Appointment[]>('/appointments')
+            ]);
+            setRows(resultsData || []);
+
+            // Get all id_appointment_detail that already have a result
+            const existingResultDetailIds = new Set((resultsData || []).map(r => r.id_appointment_detail));
+
+            // Filter appointments to only those that are AGENDADA
+            // And filter their details to only those without results
+            const availableApps = (appsData || [])
+                .filter(a => a.status === 'AGENDADA')
+                .map(a => {
+                    if (!a.exam_appointment_detail) return a;
+                    return {
+                        ...a,
+                        exam_appointment_detail: a.exam_appointment_detail.filter(
+                            d => !existingResultDetailIds.has(d.id_detail)
+                        )
+                    };
+                })
+                // Only keep appointments that still have at least one detail pending result
+                .filter(a => a.exam_appointment_detail && a.exam_appointment_detail.length > 0);
+
+            setAppointments(availableApps);
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const selectedIds = Array.from(selectionModel.ids);
 
     const handleDeleteSelected = () => {
@@ -109,46 +101,70 @@ export default function ResultsPage() {
             title: '¿Eliminar resultados?',
             description: `¿Está seguro que desea eliminar ${selectedIds.length} resultados? Esta acción no se puede deshacer.`,
             onConfirm: () => {
-                setRows(rows.filter((row) => !selectionModel.ids.has(row.result_id)));
+                setRows(rows.filter((row) => !selectionModel.ids.has(row.id_result)));
                 setSelectionModel({ type: 'include', ids: new Set() });
             }
         });
     };
 
-    const handleCreateResult = (data: any) => {
-        const exam = mockExams.find(e => e.exam_id === data.exam_id) || mockExams[0];
-
-        const newResult: any = {
-            result_id: Math.max(...rows.map(r => r.result_id), 0) + 1,
-            appointment_detail_id: 0,
-            delivery_date: data.delivery_date,
-            patient_name: data.patient_name,
-            exam_type: exam.name,
-            data: data.data
-        };
-        setRows([...rows, newResult]);
-        setIsModalOpen(false);
+    const handleCreateResult = async (data: { id_appointment_detail: number, delivery_date: string, result_data: string }) => {
+        setIsLoading(true);
+        try {
+            await apiFetch('/results', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            await fetchData();
+            setIsModalOpen(false);
+        } catch (error: any) {
+            console.error('Error creating result:', error);
+            alert(`Error al registrar el resultado: ${error.message || 'Error interno'}`);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const [searchTerm, setSearchTerm] = React.useState('');
 
-    const filteredRows = rows.filter(row =>
-        row.patient_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        row.exam_type.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredRows = rows.filter(row => {
+        const appointmentUser = row.exam_appointment_detail?.appointment?.user;
+        const patientName = `${appointmentUser?.first_name || ''} ${appointmentUser?.last_name || ''} ${appointmentUser?.uid || ''}`.toLowerCase();
+        const examName = (row.exam_appointment_detail?.exam?.exam_type?.category_name || '').toLowerCase();
+        return patientName.includes(searchTerm.toLowerCase()) || examName.includes(searchTerm.toLowerCase());
+    });
 
     const columns: GridColDef[] = [
-        { field: 'result_id', headerName: 'ID', width: 80 },
-        { field: 'patient_name', headerName: 'Paciente', width: 200 },
+        {
+            field: 'patient_name',
+            headerName: 'Paciente',
+            width: 350,
+            renderCell: (params: GridRenderCellParams) => {
+                const user = params.row.exam_appointment_detail?.appointment?.user;
+                if (!user) return <span className="text-slate-500 italic">Desconocido</span>;
+                return (
+                    <div className="flex flex-col justify-center h-full py-2">
+                        <p className="text-sm font-semibold text-white leading-tight">
+                            {user.first_name} {user.last_name}
+                        </p>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                            C.I: {user.uid}
+                        </p>
+                    </div>
+                );
+            }
+        },
         {
             field: 'exam_type',
             headerName: 'Examen',
             width: 180,
+            valueGetter: (value, row) => row.exam_appointment_detail?.exam?.exam_type?.category_name || 'Desconocido',
             renderCell: (params: GridRenderCellParams) => (
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
-                    <Icon name="vial" size="xs" color="#3b82f6" />
-                    <Chip label={params.value} variant="outlined" size="small" color="primary" sx={{ fontWeight: 600, borderRadius: '6px' }} />
-                </Stack>
+                <div className="flex items-center gap-2 h-full">
+                    <div className="w-6 h-6 rounded-lg bg-sky-500/10 flex items-center justify-center shrink-0">
+                        <Icon name="microscope" size="xs" color="#38bdf8" />
+                    </div>
+                    <span className="text-sm text-white truncate">{params.value}</span>
+                </div>
             )
         },
         {
@@ -156,10 +172,10 @@ export default function ResultsPage() {
             headerName: 'Fecha de Entrega',
             width: 200,
             renderCell: (params: GridRenderCellParams) => (
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
-                    <Icon name="calendar" size="xs" color="#94a3b8" />
-                    <Typography variant="body2">{formatDateTime(params.value)}</Typography>
-                </Stack>
+                <div className="flex items-center gap-2 h-full">
+                    <Icon name="calendar" size="xs" color="#64748b" />
+                    <span className="text-sm text-slate-300">{formatDateTime(params.value)}</span>
+                </div>
             )
         },
         {
@@ -168,96 +184,66 @@ export default function ResultsPage() {
             width: 180,
             sortable: false,
             renderCell: (params: GridRenderCellParams) => (
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
-                    <Tooltip title="Ver Detalles">
-                        <IconButton
-                            size="small"
-                            color="info"
-                            sx={{ bgcolor: '#eff6ff', '&:hover': { bgcolor: '#dbeafe' } }}
-                            onClick={() => setViewingResult(params.row)}
-                        >
-                            <Icon name="show" size="xs" />
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Imprimir">
-                        <IconButton size="small" color="secondary" sx={{ bgcolor: '#f5f3ff', '&:hover': { bgcolor: '#ede9fe' } }}>
-                            <Icon name="printer" size="xs" />
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Eliminar">
-                        <IconButton
-                            size="small"
-                            color="error"
-                            sx={{ bgcolor: '#fef2f2', '&:hover': { bgcolor: '#fee2e2' } }}
-                            onClick={() => {
-                                setConfirmModal({
-                                    open: true,
-                                    title: '¿Eliminar resultado?',
-                                    description: '¿Está seguro que desea eliminar este resultado de laboratorio? Esta acción no se puede deshacer.',
-                                    onConfirm: () => {
-                                        setRows(rows.filter(r => r.result_id !== params.row.result_id));
-                                    }
-                                });
-                            }}
-                        >
-                            <Icon name="trash" size="xs" />
-                        </IconButton>
-                    </Tooltip>
-                </Stack>
+                <div className="flex items-center gap-2 h-full">
+                    <button
+                        onClick={() => setViewingResult(params.row)}
+                        className="p-1.5 text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors"
+                        title="Ver Detalles"
+                    >
+                        <Icon name="show" size="xs" />
+                    </button>
+                    <button
+                        className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                        title="Imprimir"
+                    >
+                        <Icon name="printer" size="xs" />
+                    </button>
+                    <button
+                        onClick={() => {
+                            setConfirmModal({
+                                open: true,
+                                title: '¿Eliminar resultado?',
+                                description: '¿Está seguro que desea eliminar este resultado de laboratorio? Esta acción no se puede deshacer.',
+                                onConfirm: () => {
+                                    setRows(rows.filter(r => r.id_result !== params.row.id_result));
+                                }
+                            });
+                        }}
+                        className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                        title="Eliminar"
+                    >
+                        <Icon name="trash" size="xs" />
+                    </button>
+                </div>
             )
         }
     ];
 
     return (
         <DashboardLayout>
-            <Box maxWidth="lg" sx={{ mx: 'auto' }}>
-                <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    justifyContent="space-between"
-                    alignItems={{ xs: 'flex-start', sm: 'center' }}
-                    spacing={2}
-                    mb={4}
-                >
-                    <Box>
-                        <Stack direction="row" spacing={2} alignItems="center">
-                            <Box sx={{
-                                width: 40,
-                                height: 40,
-                                bgcolor: '#34d399', // emerald-400
-                                borderRadius: '0.75rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                boxShadow: '0 0 15px rgba(52, 211, 153, 0.4)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                zIndex: 10,
-                                position: 'relative'
-                            }}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                    <div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-emerald-400 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.4)] border border-white/10 relative z-10">
                                 <Icon name="vial" size="xs" color="white" />
-                            </Box>
-                            <Typography variant="h5" fontWeight={700} color="white">
+                            </div>
+                            <h1 className="text-2xl font-bold text-white tracking-tight">
                                 Resultados de Exámenes
-                            </Typography>
-                        </Stack>
-                        <Typography variant="body2" color="#d1d5dc" sx={{ mt: 1.5, ml: 0.5 }}>
+                            </h1>
+                        </div>
+                        <p className="text-sm text-slate-400 mt-2 ml-1">
                             Consulte y gestione los resultados de los análisis realizados.
-                        </Typography>
-                    </Box>
-                    <Button
-                        variant="contained"
-                        startIcon={<Icon name="plus" size="xs" />}
+                        </p>
+                    </div>
+                    <button
                         onClick={() => setIsModalOpen(true)}
-                        sx={{
-                            borderRadius: '0.75rem',
-                            textTransform: 'none',
-                            px: 3,
-                            boxShadow: 'none',
-                            '&:hover': { boxShadow: 'none' }
-                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white text-sm font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-sky-500/20"
                     >
+                        <Icon name="plus" size="xs" />
                         Subir Resultado
-                    </Button>
-                </Stack>
+                    </button>
+                </div>
 
                 <Modal
                     open={isModalOpen}
@@ -265,7 +251,7 @@ export default function ResultsPage() {
                     title="Subir Nuevo Resultado"
                 >
                     <ResultForm
-                        exams={mockExams}
+                        appointments={appointments}
                         onSubmit={handleCreateResult}
                         onCancel={() => setIsModalOpen(false)}
                     />
@@ -286,145 +272,141 @@ export default function ResultsPage() {
                     title="Detalles del Resultado"
                 >
                     {viewingResult && (
-                        <Stack spacing={3}>
-                            <Box sx={{ p: 2, bgcolor: '#eff6ff', borderRadius: '1rem', border: '1px solid #dbeafe' }}>
-                                <Stack direction="row" spacing={2} alignItems="center">
-                                    <Box sx={{ width: 48, height: 48, bgcolor: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main', border: '1px solid #dbeafe' }}>
-                                        <Icon name="user" size="sm" />
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>Paciente</Typography>
-                                        <Typography variant="body1" fontWeight={700}>{viewingResult.patient_name}</Typography>
-                                    </Box>
-                                </Stack>
-                            </Box>
+                        <div className="flex flex-col gap-6">
+                            <div className="p-4 bg-sky-500/5 border border-sky-500/10 rounded-2xl">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border border-sky-100 shadow-sm shrink-0">
+                                        <Icon name="user" size="sm" color="#0ea5e9" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-sky-600 uppercase tracking-widest leading-none mb-1">Paciente</p>
+                                        <h3 className="text-base font-bold text-white">
+                                            {`${viewingResult.exam_appointment_detail?.appointment?.user?.first_name || ''} ${viewingResult.exam_appointment_detail?.appointment?.user?.last_name || ''}`}
+                                        </h3>
+                                    </div>
+                                </div>
+                            </div>
 
-                            <Stack direction="row" spacing={3}>
-                                <Box flex={1}>
-                                    <Typography variant="caption" color="text.secondary" fontWeight={600}>EXAMEN</Typography>
-                                    <Typography variant="body2" fontWeight={600} sx={{ mt: 0.5 }}>{viewingResult.exam_type}</Typography>
-                                </Box>
-                                <Box flex={1}>
-                                    <Typography variant="caption" color="text.secondary" fontWeight={600}>FECHA ENTREGA</Typography>
-                                    <Typography variant="body2" fontWeight={600} sx={{ mt: 0.5 }}>{formatDateTime(viewingResult.delivery_date)}</Typography>
-                                </Box>
-                            </Stack>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Examen</p>
+                                    <p className="text-sm font-bold text-white">
+                                        {viewingResult.exam_appointment_detail?.exam?.exam_type?.category_name || 'Desconocido'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Fecha Entrega</p>
+                                    <p className="text-sm font-bold text-white">
+                                        {formatDateTime(viewingResult.delivery_date)}
+                                    </p>
+                                </div>
+                            </div>
 
-                            <Divider />
+                            <hr className="border-white/5" />
 
-                            <Box>
-                                <Stack direction="row" spacing={1} alignItems="center" mb={2}>
-                                    <Icon name="list-ul" size="xs" color="#3b82f6" />
-                                    <Typography variant="subtitle2" fontWeight={700} color="primary">Valores Registrados</Typography>
-                                </Stack>
-                                <Stack spacing={1.5}>
-                                    {Object.entries(viewingResult.data || {}).map(([key, value]) => {
-                                        const examObj = mockExams.find(e => e.name === viewingResult.exam_type);
-                                        const field = examObj?.customFields?.find(f => f.id === key);
-                                        return (
-                                            <Box
-                                                key={key}
-                                                sx={{
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
-                                                    alignItems: 'center',
-                                                    p: 1.5,
-                                                    bgcolor: '#f8fafc',
-                                                    borderRadius: '0.75rem',
-                                                    border: '1px solid #f1f5f9'
-                                                }}
-                                            >
-                                                <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                                                    {field?.label || key}:
-                                                </Typography>
-                                                <Typography variant="body2" color="text.primary" fontWeight={700}>
-                                                    {typeof value === 'boolean' ? (
-                                                        <Chip
-                                                            label={value ? 'Sí' : 'No'}
-                                                            size="small"
-                                                            color={value ? 'success' : 'default'}
-                                                            sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700 }}
-                                                        />
-                                                    ) : (
-                                                        value as string
-                                                    )}
-                                                </Typography>
-                                            </Box>
-                                        );
-                                    })}
-                                    {(!viewingResult.data || Object.keys(viewingResult.data).length === 0) && (
-                                        <Typography variant="body2" color="text.secondary" fontStyle="italic" textAlign="center">
+                            <div>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Icon name="list-ul" size="xs" color="#38bdf8" />
+                                    <h4 className="text-sm font-bold text-sky-400">Valores Registrados</h4>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    {Object.entries((viewingResult.result_data ? JSON.parse(viewingResult.result_data) : {}) as Record<string, any>).map(([key, value]) => (
+                                        <div
+                                            key={key}
+                                            className="flex justify-between items-center p-3 bg-white/2 border border-white/5 rounded-xl transition-colors hover:bg-white/4"
+                                        >
+                                            <span className="text-sm text-slate-400 font-medium">{key}:</span>
+                                            <span className="text-sm font-bold text-white">
+                                                {typeof value === 'boolean' ? (
+                                                    <span className={`px-2 py-0 rounded-full text-[10px] uppercase tracking-wider border font-bold leading-none ${value ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
+                                                        {value ? 'Sí' : 'No'}
+                                                    </span>
+                                                ) : value}
+                                            </span>
+                                        </div>
+                                    ))}
+                                    {(!viewingResult.result_data || Object.keys(JSON.parse(viewingResult.result_data)).length === 0) && (
+                                        <p className="text-sm text-slate-500 italic text-center py-4">
                                             No hay valores adicionales registrados.
-                                        </Typography>
+                                        </p>
                                     )}
-                                </Stack>
-                            </Box>
+                                </div>
+                            </div>
 
-                            <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-                                <Button
-                                    fullWidth
-                                    variant="outlined"
-                                    startIcon={<Icon name="printer" size="xs" />}
-                                    sx={{ borderRadius: '0.75rem', textTransform: 'none' }}
-                                >
+                            <div className="flex gap-3 pt-2">
+                                <button className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-white/5 hover:bg-white/10 text-white text-sm font-bold rounded-xl border border-white/10 transition-all duration-300">
+                                    <Icon name="printer" size="xs" />
                                     Imprimir
-                                </Button>
-                                <Button
-                                    fullWidth
-                                    variant="contained"
+                                </button>
+                                <button
                                     onClick={() => setViewingResult(null)}
-                                    sx={{ borderRadius: '0.75rem', textTransform: 'none', boxShadow: 'none' }}
+                                    className="flex-1 py-2.5 px-4 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white text-sm font-bold rounded-xl transition-all duration-300 shadow-lg shadow-sky-500/20"
                                 >
                                     Cerrar
-                                </Button>
-                            </Stack>
-                        </Stack>
+                                </button>
+                            </div>
+                        </div>
                     )}
                 </Modal>
 
                 <ScrollReveal delay={200}>
-                    <Box mb={3}>
-                        <TextField
-                            fullWidth
+                    <div className="mb-6 relative group w-full max-w-md">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Icon name="search" size="xs" color="#64748b" className="transition-colors group-focus-within:text-sky-400" />
+                        </div>
+                        <input
+                            type="text"
                             placeholder="Buscar por paciente, examen o código..."
-                            variant="outlined"
-                            size="small"
+                            className="w-full bg-slate-900/30 border border-white/8 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500/20 transition-all duration-300"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <Icon name="search" size="xs" color="#94a3b8" />
-                                    </InputAdornment>
-                                ),
-                            }}
-                            sx={{ maxWidth: 400 }}
                         />
-                    </Box>
+                    </div>
 
-                    <Paper
-                        elevation={0}
-                        className="w-full shadow-none overflow-hidden"
-                        sx={{
-                            backdropFilter: 'blur(16px)',
-                            backgroundColor: 'rgba(15, 23, 42, 0.45)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            borderRadius: '1.25rem',
-                            overflow: 'hidden',
-                        }}
-                    >
+                    <div className="w-full bg-slate-900/45 backdrop-blur-xl border border-white/8 rounded-2xl overflow-hidden shadow-2xl">
                         <DataGrid
                             rows={filteredRows}
                             columns={columns}
-                            getRowId={(row) => row.result_id}
+                            getRowId={(row) => row.id_result}
+                            loading={isLoading}
                             autoHeight
+                            getRowHeight={() => 'auto'}
                             checkboxSelection
                             disableRowSelectionOnClick
-                            sx={{ border: 0 }}
+                            sx={{
+                                border: 0,
+                                '& .MuiDataGrid-main': { color: '#f8fafc' },
+                                '& .MuiDataGrid-columnHeaders': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                                },
+                                '& .MuiDataGrid-cell': {
+                                    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                },
+                                '& .MuiDataGrid-row:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                },
+                                '& .MuiCheckbox-root': {
+                                    color: 'rgba(255, 255, 255, 0.2)',
+                                },
+                                '& .Mui-checked': {
+                                    color: '#38bdf8 !important',
+                                },
+                                '& .MuiDataGrid-footerContainer': {
+                                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.01)',
+                                },
+                                '& .MuiTablePagination-root': {
+                                    color: '#94a3b8',
+                                },
+                                '& .MuiIconButton-root': {
+                                    color: '#94a3b8',
+                                },
+                            }}
                         />
-                    </Paper>
+                    </div>
                 </ScrollReveal>
-            </Box>
+            </div>
         </DashboardLayout>
     );
 };

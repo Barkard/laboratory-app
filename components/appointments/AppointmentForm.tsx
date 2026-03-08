@@ -27,13 +27,15 @@ interface AppointmentFormProps {
 
 const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, users, exams, initialData }) => {
     const [formData, setFormData] = React.useState({
-        user_id: initialData?.user_id || 0,
-        requested_date: initialData?.requested_date ?
+        id_user: initialData?.id_user || 0,
+        dia: initialData?.requested_date ? (typeof initialData.requested_date === 'string' ? initialData.requested_date.substring(8, 10) : (initialData.requested_date as any).getDate().toString().padStart(2, '0')) : '',
+        mes: initialData?.requested_date ? (typeof initialData.requested_date === 'string' ? initialData.requested_date.substring(5, 7) : ((initialData.requested_date as any).getMonth() + 1).toString().padStart(2, '0')) : '',
+        sug_time: initialData?.requested_date ?
             (typeof initialData.requested_date === 'string' ?
-                initialData.requested_date.substring(0, 16) :
-                initialData.requested_date.toISOString().substring(0, 16)) :
+                initialData.requested_date.substring(11, 16) :
+                (initialData.requested_date as any).toISOString().substring(11, 16)) :
             '',
-        status: initialData?.status || 'Pending',
+        status: initialData?.status || 'PENDIENTE',
         exam_ids: initialData?.exam_ids || [] as number[],
         observations: initialData?.observations || '',
     });
@@ -45,10 +47,17 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit(formData);
+        const { dia, mes, sug_time, ...rest } = formData;
+        const currentYear = new Date().getFullYear();
+        // Construct yyyy-mm-dd format for Date parsing
+        const formattedDate = `${currentYear}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+        onSubmit({
+            ...rest,
+            requested_date: `${formattedDate}T${sug_time}:00.000Z`
+        });
     };
 
-    const selectedUser = users.find(u => u.user_id === formData.user_id) || null;
+    const selectedUser = users.find(u => u.id_user === formData.id_user) || null;
 
     return (
         <Box component="form" onSubmit={handleSubmit}>
@@ -62,20 +71,21 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
 
                     <Autocomplete
                         options={users}
-                        getOptionLabel={(option) => `${option.first_name} ${option.last_name} (${option.identity_card})`}
+                        getOptionLabel={(option) => `${option.uid} - ${option.first_name} ${option.last_name}`}
                         value={selectedUser}
                         onChange={(_, newValue) => {
-                            setFormData(prev => ({ ...prev, user_id: newValue?.user_id || 0 }));
+                            setFormData(prev => ({ ...prev, id_user: newValue?.id_user || 0 }));
                         }}
                         renderInput={(params) => (
                             <TextField
                                 {...params}
-                                label="Buscar Paciente"
-                                placeholder="Nombre o Cédula..."
+                                label="Buscar Paciente por Cédula"
+                                placeholder="Escriba la cédula..."
                                 required
                                 fullWidth
                                 slotProps={{
                                     input: {
+                                        ...params.InputProps,
                                         sx: {
                                             borderRadius: '0.75rem',
                                             color: 'white',
@@ -92,6 +102,24 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
                             />
                         )}
                     />
+
+                    {selectedUser && (
+                        <Box sx={{ p: 2, bgcolor: 'rgba(16, 185, 129, 0.05)', borderRadius: '0.75rem', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                            <Stack direction="row" spacing={2} alignItems="center">
+                                <Box sx={{ p: 1, bgcolor: 'rgba(16, 185, 129, 0.2)', borderRadius: '50%' }}>
+                                    <Icon name="user" size="xs" color="#10b981" />
+                                </Box>
+                                <Box>
+                                    <Typography variant="body2" fontWeight={700} color="white">
+                                        {selectedUser.first_name} {selectedUser.last_name}
+                                    </Typography>
+                                    <Typography variant="caption" color="#94a3b8">
+                                        Cédula: {selectedUser.uid} | Tel: {selectedUser.phone}
+                                    </Typography>
+                                </Box>
+                            </Stack>
+                        </Box>
+                    )}
                 </Stack>
 
                 <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.05)' }} />
@@ -106,17 +134,17 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
                     <Autocomplete
                         multiple
                         options={exams}
-                        getOptionLabel={(option) => option.name}
-                        value={exams.filter(e => formData.exam_ids.includes(e.exam_id))}
+                        getOptionLabel={(option) => option.exam_type?.category_name || 'Sin nombre'}
+                        value={exams.filter(e => formData.exam_ids.includes(e.id_exam))}
                         onChange={(_, newValue) => {
-                            setFormData(prev => ({ ...prev, exam_ids: newValue.map(e => e.exam_id) }));
+                            setFormData(prev => ({ ...prev, exam_ids: newValue.map(e => e.id_exam) }));
                         }}
                         renderTags={(value, getTagProps) =>
                             value.map((option, index) => (
                                 <Chip
-                                    label={option.name}
+                                    label={option.exam_type?.category_name || 'Sin nombre'}
                                     {...getTagProps({ index })}
-                                    key={option.exam_id}
+                                    key={option.id_exam}
                                     size="small"
                                     sx={{ borderRadius: '6px', fontWeight: 600 }}
                                 />
@@ -149,14 +177,44 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit, onCancel, u
                         )}
                     />
 
-                    <Input
-                        label="Fecha y Hora Sugerida"
-                        name="requested_date"
-                        type="datetime-local"
-                        value={formData.requested_date}
-                        onChange={handleChange}
-                        required
-                    />
+                    <Stack spacing={2}>
+                        <Stack direction="row" spacing={1} alignItems="flex-end">
+                            <Box flex={1}>
+                                <Input
+                                    label="Día"
+                                    name="dia"
+                                    type="text"
+                                    placeholder="DD"
+                                    maxLength={2}
+                                    value={formData.dia}
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </Box>
+                            <Box flex={1}>
+                                <Input
+                                    label="Mes"
+                                    name="mes"
+                                    type="text"
+                                    placeholder="MM"
+                                    maxLength={2}
+                                    value={formData.mes}
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </Box>
+                            <Box flex={2}>
+                                <Input
+                                    label="Hora Sugerida"
+                                    name="sug_time"
+                                    type="time"
+                                    value={formData.sug_time}
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </Box>
+                        </Stack>
+                    </Stack>
 
                     <Input
                         label="Observaciones o Síntomas"

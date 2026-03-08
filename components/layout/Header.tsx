@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Icon from '@/components/ui/Icon';
 
 interface HeaderProps {
@@ -6,6 +6,21 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
+    const [user, setUser] = useState<any>(null);
+
+    useEffect(() => {
+        const storedUser = localStorage.getItem('lab_user');
+        if (storedUser) {
+            try {
+                setUser(JSON.parse(storedUser));
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+            }
+        }
+    }, []);
+
+    const roleName = user?.role?.name || (user?.id_role === 1 ? 'Administrador' : 'Usuario');
+
     return (
         <header className="h-20 bg-slate-950/20 backdrop-blur-md border-b border-white/5 px-4 md:px-8 flex items-center justify-between sticky top-0 z-10 font-sans">
             <div className="flex items-center space-x-4">
@@ -30,8 +45,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
                 <div className="flex items-center space-x-3 pl-3 md:pl-6 border-l border-white/10">
                     <div className="text-right hidden sm:block">
-                        <p className="text-sm font-bold text-white">Dr. Leon Pineda</p>
-                        <p className="text-xs text-slate-400">Administrador</p>
+                        <p className="text-sm font-bold text-white">
+                            {user ? `${user.first_name} ${user.last_name}` : 'Cargando...'}
+                        </p>
+                        <p className="text-xs text-slate-400 capitalize">{roleName}</p>
                     </div>
                     <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-sky-400 overflow-hidden shrink-0">
                         <i className="bx bx-smile text-3xl" />
@@ -43,3 +60,4 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 };
 
 export default Header;
+

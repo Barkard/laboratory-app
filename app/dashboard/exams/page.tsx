@@ -5,45 +5,20 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import Icon from '@/components/ui/Icon';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import { Exam, ExamType, CustomFile } from '@/types';
-import {
-    Box,
-    Typography,
-    Button,
-    TextField,
-    InputAdornment,
-    IconButton,
-    Stack,
-    Paper,
-    Chip,
-    Divider
-} from '@mui/material';
+import { GridRowId } from '@mui/x-data-grid';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import ExamForm from '@/components/exams/ExamForm';
 import { DataGrid, GridColDef, GridRowSelectionModel, GridRenderCellParams } from '@mui/x-data-grid';
+import { apiFetch } from '@/utils/api';
 
-// ... (rest of imports)
-
-const examTypes: ExamType[] = [
-    { type_id: 1, category_name: 'Hematología' },
-    { type_id: 2, category_name: 'Bioquímica' },
-    { type_id: 3, category_name: 'Inmunología' },
-];
-
-const customFiles: CustomFile[] = [
-    { file_id: 1, config_name: 'Standard Blood Test', json_schema: '{}' },
-    { file_id: 2, config_name: 'Urine Analysis', json_schema: '{}' },
-];
-
-const examsData: (Exam & { type: string })[] = [
-    { exam_id: 1, name: 'Hematología', type_id: 1, file_id: 1, type: 'Hematología' },
-    { exam_id: 2, name: 'Bioquímica', type_id: 2, file_id: 1, type: 'Bioquímica' },
-    { exam_id: 3, name: 'Inmunología', type_id: 3, file_id: 2, type: 'Inmunología' },
-];
+const examsData: (Exam & { type: string })[] = [];
 
 export default function ExamsPage() {
-    const [allExamTypes, setAllExamTypes] = React.useState<ExamType[]>(examTypes);
-    const [rows, setRows] = React.useState(examsData);
+    const [allExamTypes, setAllExamTypes] = React.useState<ExamType[]>([]);
+    const [rows, setRows] = React.useState<any[]>([]);
+    const [isLoading, setIsLoading] = React.useState(true);
+
     const [selectionModel, setSelectionModel] = React.useState<GridRowSelectionModel>({
         type: 'include',
         ids: new Set()
@@ -62,6 +37,40 @@ export default function ExamsPage() {
         description: '',
         onConfirm: () => { }
     });
+    const router = React.useMemo(() => typeof window !== 'undefined' ? require('next/navigation').useRouter() : null, []);
+
+    React.useEffect(() => {
+        const storedUser = localStorage.getItem('lab_user');
+        if (storedUser) {
+            try {
+                const user = JSON.parse(storedUser);
+                if (user.id_role !== 1 && router) {
+                    router.push('/dashboard/patient');
+                }
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+            }
+        }
+        fetchExams();
+    }, [router]);
+
+    const fetchExams = async () => {
+        setIsLoading(true);
+        try {
+            const [examsData, typesData] = await Promise.all([
+                apiFetch<Exam[]>('/exams'),
+                apiFetch<ExamType[]>('/exams/types')
+            ]);
+
+            // Adapt NestJS response (it returns the array directly)
+            setRows(Array.isArray(examsData) ? examsData : ((examsData as any).exams || []));
+            setAllExamTypes(Array.isArray(typesData) ? typesData : ((typesData as any).types || []));
+        } catch (error) {
+            console.error('Error fetching exams:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const selectedIds = Array.from(selectionModel.ids);
 
@@ -73,55 +82,88 @@ export default function ExamsPage() {
             title: '¿Eliminar exámenes?',
             description: `¿Está seguro que desea eliminar ${selectedIds.length} exámenes del catálogo? Esta acción no se puede deshacer.`,
             onConfirm: () => {
-                setRows(rows.filter((row) => !selectionModel.ids.has(row.exam_id)));
+                setRows(rows.filter((row) => !selectionModel.ids.has(row.id_exam)));
                 setSelectionModel({ type: 'include', ids: new Set() });
             }
         });
     };
 
-    const handleCreateExam = (data: any) => {
-        const type = allExamTypes.find(t => t.type_id === data.type_id);
+    const handleCreateExam = async (data: any) => {
+        setIsLoading(true);
+        try {
+            const method = editingExam ? 'PATCH' : 'POST';
+            const url = editingExam ? `/exams/${editingExam.id_exam}` : `/exams`;
 
-        if (editingExam) {
-            setRows(rows.map(r => r.exam_id === editingExam.exam_id ? {
-                ...r,
-                name: data.name,
-                type_id: data.type_id,
-                type: type?.category_name || 'Desconocido',
-                customFields: data.customFields
-            } : r));
-        } else {
-            const newExam: any = {
-                exam_id: Math.max(...rows.map(r => r.exam_id), 0) + 1,
-                name: data.name,
-                type_id: data.type_id || 0,
-                file_id: 0,
-                type: type?.category_name || 'Desconocido',
-                customFields: data.customFields
+            // NestJS backend expects custom_file_data and id_type
+            const payload: any = {
+                id_type: data.id_type,
             };
-            setRows([...rows, newExam]);
-        }
 
-        setIsModalOpen(false);
-        setEditingExam(null);
+            // For new exams, we always need either id_file or custom_file_data
+            // If data.id_file is not present, we create a new custom_file_data
+            if (!data.id_file) {
+                payload.custom_file_data = {
+                    config_name: data.config_name || `Config for ${data.name || 'Exam'}`,
+                    json_schema: JSON.stringify(data.customFields || [])
+                };
+            } else {
+                payload.id_file = data.id_file;
+            }
+
+            await apiFetch(url, {
+                method,
+                body: JSON.stringify(payload)
+            });
+
+            await fetchExams();
+            setIsModalOpen(false);
+            setEditingExam(null);
+        } catch (error) {
+            console.error('Error saving exam:', error);
+            alert('Error al guardar el examen. Verifique los datos.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleAddNewType = (name: string) => {
-        const newType: ExamType = {
-            type_id: Math.max(...allExamTypes.map(t => t.type_id), 0) + 1,
-            category_name: name
-        };
-        setAllExamTypes([...allExamTypes, newType]);
+    const handleAddNewType = async (name: string, requirements: string) => {
+        try {
+            const data = await apiFetch<ExamType>('/exams/types', {
+                method: 'POST',
+                body: JSON.stringify({
+                    category_name: name,
+                    detail: `Categoría para ${name}`,
+                    requirements: requirements
+                })
+            });
+
+            setAllExamTypes(prev => [...prev, data]);
+            return data.id_type;
+        } catch (error) {
+            console.error('Error adding exam type:', error);
+            alert('Error al crear la categoría de examen.');
+            return undefined;
+        }
     };
 
     const columns: GridColDef[] = [
-        { field: 'exam_id', headerName: 'ID', width: 80 },
+        {
+            field: 'name',
+            headerName: 'Examen',
+            width: 250,
+            valueGetter: (value, row) => row.exam_type?.category_name || 'Sin nombre'
+        },
         {
             field: 'type',
-            headerName: 'Nombre / Tipo de Examen',
-            width: 300,
+            headerName: 'Categoría',
+            width: 200,
+            valueGetter: (value, row) => row.exam_type?.category_name || 'Sin categoría',
             renderCell: (params: GridRenderCellParams) => (
-                <Chip label={params.value} variant="outlined" size="small" sx={{ fontWeight: 600 }} color="primary" />
+                <div className="flex items-center h-full">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider leading-none bg-sky-500/10 text-sky-500 border-sky-500/20">
+                        {params.value}
+                    </span>
+                </div>
             )
         },
         {
@@ -130,105 +172,84 @@ export default function ExamsPage() {
             width: 120,
             sortable: false,
             renderCell: (params: GridRenderCellParams) => (
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ height: '100%' }}>
-                    <IconButton
-                        size="small"
-                        color="info"
-                        title="Ver/Llenar Formulario"
+                <div className="flex items-center gap-2 h-full">
+                    <button
                         onClick={() => setPreviewExam(params.row)}
+                        className="p-1.5 text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors"
+                        title="Ver/Llenar Formulario"
                     >
                         <Icon name="task" size="xs" />
-                    </IconButton>
-                    <IconButton
-                        size="small"
-                        color="primary"
+                    </button>
+                    <button
                         onClick={() => {
                             setEditingExam(params.row);
                             setIsModalOpen(true);
                         }}
+                        className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                        title="Editar"
                     >
                         <Icon name="edit-alt" size="xs" />
-                    </IconButton>
-                    <IconButton
-                        size="small"
-                        color="error"
+                    </button>
+                    <button
                         onClick={() => {
                             setConfirmModal({
                                 open: true,
                                 title: '¿Eliminar examen?',
                                 description: '¿Está seguro que desea eliminar este examen del catálogo? Esta acción no se puede deshacer.',
                                 onConfirm: () => {
-                                    setRows(rows.filter(r => r.exam_id !== params.row.exam_id));
+                                    setRows(rows.filter(r => r.id_exam !== params.row.id_exam));
                                 }
                             });
                         }}
+                        className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                        title="Eliminar"
                     >
                         <Icon name="trash" size="xs" />
-                    </IconButton>
-                </Stack>
+                    </button>
+                </div>
             )
         }
     ];
 
     return (
         <DashboardLayout>
-            <Box maxWidth="lg" sx={{ mx: 'auto' }}>
-                <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    justifyContent="space-between"
-                    alignItems={{ xs: 'flex-start', sm: 'center' }}
-                    spacing={2}
-                    mb={4}
-                >
-                    <Box>
-                        <Stack direction="row" spacing={2} alignItems="center">
-                            <Box sx={{
-                                width: 40,
-                                height: 40,
-                                bgcolor: '#34d399', // emerald-400
-                                borderRadius: '0.75rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                boxShadow: '0 0 15px rgba(52, 211, 153, 0.4)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                zIndex: 10,
-                                position: 'relative'
-                            }}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                    <div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-emerald-400 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.4)] border border-white/10 relative z-10">
                                 <Icon name="book" size="xs" color="white" />
-                            </Box>
-                            <Typography variant="h5" fontWeight={700} color="white">
+                            </div>
+                            <h1 className="text-2xl font-bold text-white tracking-tight">
                                 Catálogo de Exámenes
-                            </Typography>
-                        </Stack>
-                        <Typography variant="body2" color="#d1d5dc" sx={{ mt: 1.5, ml: 0.5 }}>
+                            </h1>
+                        </div>
+                        <p className="text-sm text-slate-400 mt-2 ml-1">
                             Gestione los diferentes tipos de análisis disponibles.
-                        </Typography>
-                    </Box>
-                    <Stack direction="row" spacing={2}>
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
                         {selectedIds.length > 0 && (
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                startIcon={<Icon name="trash" size="xs" />}
+                            <button
                                 onClick={handleDeleteSelected}
+                                className="flex items-center gap-2 px-4 py-2 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white text-sm font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-rose-500/20"
                             >
+                                <Icon name="trash" size="xs" />
                                 Eliminar ({selectedIds.length})
-                            </Button>
+                            </button>
                         )}
-                        <Button
-                            variant="contained"
-                            startIcon={<Icon name="plus" size="xs" />}
+                        <button
                             onClick={() => {
                                 setEditingExam(null);
                                 setIsModalOpen(true);
                             }}
-                            sx={{ boxShadow: 'none', '&:hover': { boxShadow: 'none' } }}
+                            className="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white text-sm font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-sky-500/20"
                         >
+                            <Icon name="plus" size="xs" />
                             Nuevo Examen
-                        </Button>
-                    </Stack>
-                </Stack>
+                        </button>
+                    </div>
+                </div>
 
                 <Modal
                     open={isModalOpen}
@@ -239,7 +260,7 @@ export default function ExamsPage() {
                     title={editingExam ? "Editar Examen" : "Registrar Nuevo Examen"}
                 >
                     <ExamForm
-                        key={editingExam?.exam_id || 'new'}
+                        key={editingExam?.id_exam || 'new'}
                         examTypes={allExamTypes}
                         onAddType={handleAddNewType}
                         onSubmit={handleCreateExam}
@@ -252,38 +273,23 @@ export default function ExamsPage() {
                 </Modal>
 
                 <ScrollReveal delay={200}>
-                    <Box mb={3}>
-                        <TextField
-                            fullWidth
+                    <div className="mb-6 relative group w-full max-w-md">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Icon name="search" size="xs" color="#64748b" className="transition-colors group-focus-within:text-sky-400" />
+                        </div>
+                        <input
+                            type="text"
                             placeholder="Buscar por tipo o configuración..."
-                            variant="outlined"
-                            size="small"
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <Icon name="search" size="xs" color="#94a3b8" />
-                                    </InputAdornment>
-                                ),
-                            }}
-                            sx={{ maxWidth: 400 }}
+                            className="w-full bg-slate-900/30 border border-white/8 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500/20 transition-all duration-300"
                         />
-                    </Box>
+                    </div>
 
-                    <Paper
-                        elevation={0}
-                        className="w-full shadow-none overflow-hidden"
-                        sx={{
-                            backdropFilter: 'blur(16px)',
-                            backgroundColor: 'rgba(15, 23, 42, 0.45)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            borderRadius: '1.25rem',
-                            overflow: 'hidden',
-                        }}
-                    >
+                    <div className="w-full bg-slate-900/45 backdrop-blur-xl border border-white/8 rounded-2xl overflow-hidden shadow-2xl">
                         <DataGrid
                             rows={rows}
                             columns={columns}
-                            getRowId={(row) => row.exam_id}
+                            getRowId={(row) => row.id_exam}
+                            loading={isLoading}
                             initialState={{
                                 pagination: {
                                     paginationModel: { page: 0, pageSize: 5 },
@@ -297,9 +303,38 @@ export default function ExamsPage() {
                             rowSelectionModel={selectionModel}
                             disableRowSelectionOnClick
                             autoHeight
-                            sx={{ border: 0 }}
+                            sx={{
+                                border: 0,
+                                '& .MuiDataGrid-main': { color: '#f8fafc' },
+                                '& .MuiDataGrid-columnHeaders': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                                },
+                                '& .MuiDataGrid-cell': {
+                                    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                },
+                                '& .MuiDataGrid-row:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                },
+                                '& .MuiCheckbox-root': {
+                                    color: 'rgba(255, 255, 255, 0.2)',
+                                },
+                                '& .Mui-checked': {
+                                    color: '#38bdf8 !important',
+                                },
+                                '& .MuiDataGrid-footerContainer': {
+                                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.01)',
+                                },
+                                '& .MuiTablePagination-root': {
+                                    color: '#94a3b8',
+                                },
+                                '& .MuiIconButton-root': {
+                                    color: '#94a3b8',
+                                },
+                            }}
                         />
-                    </Paper>
+                    </div>
                 </ScrollReveal>
 
                 <ConfirmModal
@@ -310,72 +345,70 @@ export default function ExamsPage() {
                     description={confirmModal.description}
                 />
 
-                {/* Form Preview Modal */}
                 <Modal
                     open={!!previewExam}
                     onClose={() => setPreviewExam(null)}
-                    title={`Vista Previa: ${previewExam?.name}`}
+                    title={`Vista Previa: ${previewExam?.exam_type?.category_name || 'Examen'}`}
                 >
-                    {previewExam && (
-                        <Stack spacing={3}>
-                            <Typography variant="body2" color="text.secondary">
-                                Esta es una vista previa de cómo se verá el formulario de resultados para este examen.
-                            </Typography>
+                    {previewExam && (() => {
+                        const fields = previewExam.custom_files?.json_schema
+                            ? JSON.parse(previewExam.custom_files.json_schema)
+                            : [];
 
-                            <Divider />
+                        return (
+                            <div className="flex flex-col gap-6">
+                                <p className="text-sm text-slate-400">
+                                    Esta es una vista previa de cómo se verá el formulario de resultados.
+                                </p>
 
-                            {previewExam.customFields && previewExam.customFields.length > 0 ? (
-                                <Stack spacing={3}>
-                                    {previewExam.customFields.map((field: any) => (
-                                        <Box key={field.id}>
-                                            {field.type === 'checkbox' ? (
-                                                <Stack direction="row" alignItems="center" spacing={1}>
-                                                    <Box sx={{ width: 20, height: 20, border: '2px solid #cbd5e1', borderRadius: '4px' }} />
-                                                    <Typography variant="body2">{field.label}</Typography>
-                                                </Stack>
-                                            ) : (
-                                                <Box>
-                                                    <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                                                        {field.label}
-                                                    </Typography>
-                                                    <Box
-                                                        sx={{
-                                                            p: 1.5,
-                                                            bgcolor: '#f8fafc',
-                                                            borderRadius: '0.75rem',
-                                                            border: '1px solid #e2e8f0',
-                                                            color: '#94a3b8',
-                                                            fontSize: '0.875rem'
-                                                        }}
-                                                    >
-                                                        {field.type === 'select' ? `Seleccionar ${field.label}...` : `Ingresar ${field.label.toLowerCase()}...`}
-                                                    </Box>
-                                                </Box>
-                                            )}
-                                        </Box>
-                                    ))}
-                                </Stack>
-                            ) : (
-                                <Box sx={{ p: 4, textAlign: 'center', bgcolor: '#f1f5f9', borderRadius: '1rem' }}>
-                                    <Icon name="info-circle" size="md" color="#94a3b8" />
-                                    <Typography variant="body2" color="text.secondary" mt={1}>
-                                        Este examen no tiene campos configurados aún.
-                                    </Typography>
-                                </Box>
-                            )}
+                                <hr className="border-white/5" />
 
-                            <Button
-                                fullWidth
-                                variant="contained"
-                                onClick={() => setPreviewExam(null)}
-                                sx={{ borderRadius: '0.75rem', mt: 2 }}
-                            >
-                                Entendido
-                            </Button>
-                        </Stack>
-                    )}
+                                {fields.length > 0 ? (
+                                    <div className="flex flex-col gap-6">
+                                        {fields.map((field: any) => (
+                                            <div key={field.id}>
+                                                {field.type === 'checkbox' ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-5 h-5 border-2 border-white/20 rounded-sm" />
+                                                        <p className="text-sm text-white">{field.label}</p>
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">
+                                                            {field.label}
+                                                        </label>
+                                                        <div
+                                                            className="p-3 bg-white/3 border border-white/10 rounded-xl text-white/40 text-sm"
+                                                        >
+                                                            {field.type === 'select' ? `Seleccionar ${field.label}...` : `Ingresar ${field.label.toLowerCase()}...`}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="py-8 px-4 text-center bg-white/2 border border-dashed border-white/10 rounded-2xl">
+                                        <div className="flex justify-center mb-3">
+                                            <Icon name="info-circle" size="md" color="#64748b" />
+                                        </div>
+                                        <p className="text-sm text-slate-500">
+                                            Este examen no tiene campos configurados aún.
+                                        </p>
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={() => setPreviewExam(null)}
+                                    className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-bold rounded-xl transition-all duration-300 shadow-lg shadow-emerald-500/20 mt-2"
+                                >
+                                    Cerrar Vista Previa
+                                </button>
+                            </div>
+                        );
+                    })()}
                 </Modal>
-            </Box>
+            </div>
         </DashboardLayout>
     );
 }

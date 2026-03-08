@@ -5,25 +5,49 @@ import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Icon from '../ui/Icon';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/utils/api';
 
 const LoginForm: React.FC = () => {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [identityCard, setIdentityCard] = useState('');
+    const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        setError(null);
+
+        try {
+            const data = await apiFetch<any>('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ identityCard }),
+            });
+
+            if (data.exists) {
+                console.log('User exists, redirecting to dashboard');
+                if (data.user) {
+                    localStorage.setItem('lab_user', JSON.stringify(data.user));
+                }
+                router.push('/dashboard');
+            } else {
+                console.log('New user, redirecting to registration');
+                router.push(`/register?cedula=${identityCard}`);
+            }
+        } catch (err: any) {
+            console.error('Login error:', err);
+            setError(err.message || 'Error de conexión con el servidor');
             setIsLoading(false);
-            console.log('Login attempt with identityCard:', identityCard);
-            router.push('/dashboard');
-        }, 1500);
+        }
     };
 
     return (
         <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+            {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-medium">
+                    {error}
+                </div>
+            )}
             <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
                     <Icon name="user-detail" type="solid" size="lg" className="text-blue-600" />

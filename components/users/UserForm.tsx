@@ -14,7 +14,7 @@ interface UserFormProps {
 
 const UserForm: React.FC<UserFormProps> = ({ onSubmit, onCancel, initialData }) => {
     const [formData, setFormData] = React.useState<Partial<User>>({
-        identity_card: initialData?.identity_card || '',
+        uid: initialData?.uid || '',
         first_name: initialData?.first_name || '',
         last_name: initialData?.last_name || '',
     });
@@ -37,11 +37,10 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onCancel, initialData }) 
                         <Icon name="user-detail" size="xs" color="#10b981" />
                         <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">Datos Personales</Typography>
                     </Stack>
-
                     <Input
                         label="Número de Cédula"
-                        name="identity_card"
-                        value={formData.identity_card}
+                        name="uid"
+                        value={formData.uid}
                         onChange={handleChange}
                         placeholder="Ej. 12345678"
                         required

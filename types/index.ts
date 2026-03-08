@@ -1,17 +1,22 @@
 export interface User {
-    user_id: number;
-    identity_card: string;
+    id_user: number;
+    uid: string;
     first_name: string;
     last_name: string;
+    email: string;
+    phone: string;
+    id_role: number;
 }
 
 export interface ExamType {
-    type_id: number;
+    id_type: number;
     category_name: string;
+    detail: string;
+    requirements?: string;
 }
 
 export interface CustomFile {
-    file_id: number;
+    id_file: number;
     config_name: string;
     json_schema: string;
 }
@@ -24,30 +29,35 @@ export interface DynamicField {
 }
 
 export interface Exam {
-    exam_id: number;
-    name: string;
-    type_id: number;
-    file_id: number;
-    customFields?: DynamicField[];
+    id_exam: number;
+    id_type: number;
+    id_file: number;
+    custom_files?: CustomFile;
+    exam_type?: ExamType;
 }
 
 export interface Appointment {
-    appointment_id: number;
-    user_id: number;
-    requested_date: Date | string;
+    id_appointment: number;
+    id_user: number;
+    requested_date: string; // ISO String
     status: string;
+    user?: User;
+    exam_appointment_detail?: AppointmentExamDetail[];
 }
 
 export interface AppointmentExamDetail {
-    detail_id: number;
-    appointment_id: number;
-    exam_id: number;
+    id_detail: number;
+    id_appointment: number;
+    id_exam: number;
     patient_observations?: string;
+    appointment?: Appointment;
+    exam?: Exam;
 }
 
 export interface Result {
-    result_id: number;
-    appointment_detail_id: number;
-    delivery_date: Date | string;
-    data?: Record<string, any>; // Stores values for dynamic fields
+    id_result: number;
+    id_appointment_detail: number;
+    delivery_date: string; // ISO String
+    result_data?: string; // JSON string
+    exam_appointment_detail?: AppointmentExamDetail;
 }
