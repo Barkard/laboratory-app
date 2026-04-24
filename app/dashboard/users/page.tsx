@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Icon from '@/components/ui/Icon';
 import ScrollReveal from '@/components/ui/ScrollReveal';
@@ -9,6 +10,7 @@ import ConfirmModal from '@/components/ui/ConfirmModal';
 import UserForm from '@/components/users/UserForm';
 import { DataGrid, GridColDef, GridRowSelectionModel, GridRenderCellParams } from '@mui/x-data-grid';
 import { apiFetch } from '@/utils/api';
+import { capitalize } from '@/utils/formatters';
 
 // Mock data removed in favor of real API integration
 
@@ -31,7 +33,7 @@ export default function UsersPage() {
         description: '',
         onConfirm: () => { }
     });
-    const router = React.useMemo(() => typeof window !== 'undefined' ? require('next/navigation').useRouter() : null, []);
+    const router = useRouter();
 
     React.useEffect(() => {
         const storedUser = localStorage.getItem('lab_user');
@@ -87,8 +89,18 @@ export default function UsersPage() {
 
     const columns: GridColDef[] = [
         { field: 'uid', headerName: 'Cédula', width: 130 },
-        { field: 'first_name', headerName: 'Nombres', width: 150 },
-        { field: 'last_name', headerName: 'Apellidos', width: 150 },
+        {
+            field: 'first_name',
+            headerName: 'Nombres',
+            width: 150,
+            renderCell: (params: GridRenderCellParams) => capitalize(params.value as string)
+        },
+        {
+            field: 'last_name',
+            headerName: 'Apellidos',
+            width: 150,
+            renderCell: (params: GridRenderCellParams) => capitalize(params.value as string)
+        },
         { field: 'phone', headerName: 'Teléfono', width: 130 },
         {
             field: 'id_role',

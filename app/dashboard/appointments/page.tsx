@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Icon from '@/components/ui/Icon';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import { Appointment, User } from '@/types';
-import { formatDateTime } from '@/utils/formatters';
+import { formatDateTime, formatFullName } from '@/utils/formatters';
 import {
     DataGrid,
     GridColDef,
@@ -67,7 +68,7 @@ export default function AppointmentsPage() {
         onConfirm: () => { }
     });
 
-    const router = React.useMemo(() => typeof window !== 'undefined' ? require('next/navigation').useRouter() : null, []);
+    const router = useRouter();
 
     React.useEffect(() => {
         const storedUser = localStorage.getItem('lab_user');
@@ -164,7 +165,7 @@ export default function AppointmentsPage() {
             field: 'patient',
             headerName: 'Paciente',
             width: 250,
-            valueGetter: (value, row) => `${row.user?.first_name || ''} ${row.user?.last_name || ''}`.trim()
+            valueGetter: (value, row) => formatFullName(row.user?.first_name || '', row.user?.last_name || '')
         },
         {
             field: 'uid',
@@ -313,7 +314,7 @@ export default function AppointmentsPage() {
                                         </div>
                                         <div>
                                             <p className="text-base font-bold text-white leading-tight">
-                                                {selectedAppointment.user?.first_name} {selectedAppointment.user?.last_name}
+                                                {formatFullName(selectedAppointment.user?.first_name || '', selectedAppointment.user?.last_name || '')}
                                             </p>
                                             <p className="text-sm text-white/60 mt-0.5">
                                                 Cédula: {selectedAppointment.user?.uid}

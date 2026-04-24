@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Icon from '@/components/ui/Icon';
 import ScrollReveal from "@/components/ui/ScrollReveal";
@@ -38,7 +39,7 @@ export default function ResultsPage() {
         onConfirm: () => { }
     });
 
-    const router = React.useMemo(() => typeof window !== 'undefined' ? require('next/navigation').useRouter() : null, []);
+    const router = useRouter();
 
     React.useEffect(() => {
         const storedUser = localStorage.getItem('lab_user');
@@ -310,26 +311,45 @@ export default function ResultsPage() {
                                     <h4 className="text-sm font-bold text-sky-400">Valores Registrados</h4>
                                 </div>
                                 <div className="flex flex-col gap-2">
-                                    {Object.entries((viewingResult.result_data ? JSON.parse(viewingResult.result_data) : {}) as Record<string, any>).map(([key, value]) => (
-                                        <div
-                                            key={key}
-                                            className="flex justify-between items-center p-3 bg-white/2 border border-white/5 rounded-xl transition-colors hover:bg-white/4"
-                                        >
-                                            <span className="text-sm text-slate-400 font-medium">{key}:</span>
-                                            <span className="text-sm font-bold text-white">
-                                                {typeof value === 'boolean' ? (
-                                                    <span className={`px-2 py-0 rounded-full text-[10px] uppercase tracking-wider border font-bold leading-none ${value ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
-                                                        {value ? 'Sí' : 'No'}
+                                    {(() => {
+                                        const resultData = viewingResult.result_data ? JSON.parse(viewingResult.result_data) : {};
+                                        let schema: any[] = [];
+                                        try {
+                                            const schemaStr = viewingResult.exam_appointment_detail?.exam?.custom_files?.json_schema;
+                                            if (schemaStr) schema = JSON.parse(schemaStr);
+                                        } catch (e) {}
+                                        
+                                        const entries = Object.entries(resultData);
+                                        
+                                        if (entries.length === 0) {
+                                            return (
+                                                <p className="text-sm text-slate-500 italic text-center py-4">
+                                                    No hay valores adicionales registrados.
+                                                </p>
+                                            );
+                                        }
+
+                                        return entries.map(([key, value]) => {
+                                            const fieldDef = schema.find((f: any) => f.id === key);
+                                            const label = fieldDef ? fieldDef.label : key;
+
+                                            return (
+                                                <div
+                                                    key={key}
+                                                    className="flex justify-between items-center p-3 bg-white/2 border border-white/5 rounded-xl transition-colors hover:bg-white/4"
+                                                >
+                                                    <span className="text-sm text-slate-400 font-medium">{label}:</span>
+                                                    <span className="text-sm font-bold text-white">
+                                                        {typeof value === 'boolean' ? (
+                                                            <span className={`px-2 py-0 rounded-full text-[10px] uppercase tracking-wider border font-bold leading-none ${value ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
+                                                                {value ? 'Sí' : 'No'}
+                                                            </span>
+                                                        ) : (value as any)}
                                                     </span>
-                                                ) : value}
-                                            </span>
-                                        </div>
-                                    ))}
-                                    {(!viewingResult.result_data || Object.keys(JSON.parse(viewingResult.result_data)).length === 0) && (
-                                        <p className="text-sm text-slate-500 italic text-center py-4">
-                                            No hay valores adicionales registrados.
-                                        </p>
-                                    )}
+                                                </div>
+                                            );
+                                        });
+                                    })()}
                                 </div>
                             </div>
 

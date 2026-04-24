@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Icon from '@/components/ui/Icon';
 import ScrollReveal from '@/components/ui/ScrollReveal';
@@ -37,7 +38,7 @@ export default function ExamsPage() {
         description: '',
         onConfirm: () => { }
     });
-    const router = React.useMemo(() => typeof window !== 'undefined' ? require('next/navigation').useRouter() : null, []);
+    const router = useRouter();
 
     React.useEffect(() => {
         const storedUser = localStorage.getItem('lab_user');

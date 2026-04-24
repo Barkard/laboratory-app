@@ -29,3 +29,20 @@ export const formatDateTime = (date: Date | string): string => {
 
     return `${datePart} ${hours}:${minutes}`;
 };
+
+/**
+ * Capitalizes the first letter of a string and converts the rest to lowercase
+ */
+export const capitalize = (text: string): string => {
+    if (!text) return '';
+    const trimmed = text.trim();
+    if (!trimmed) return '';
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+};
+
+/**
+ * Formats a user's full name with proper capitalization
+ */
+export const formatFullName = (firstName: string, lastName: string): string => {
+    return `${capitalize(firstName)} ${capitalize(lastName)}`.trim();
+};

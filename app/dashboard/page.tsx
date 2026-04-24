@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Icon from "@/components/ui/Icon";
 import Button from "@/components/ui/Button";
@@ -9,7 +10,7 @@ import { apiFetch } from "@/utils/api";
 import Modal from "@/components/ui/Modal";
 import ResultForm from "@/components/results/ResultForm";
 import { Result, Appointment } from "@/types";
-import { formatDateTime } from '@/utils/formatters';
+import { formatDateTime, formatFullName } from '@/utils/formatters';
 
 const StatusBadge = ({ status }: { status: string }) => {
     const variants: Record<string, string> = {
@@ -180,7 +181,7 @@ export default function AdminDashboard() {
         }
     };
 
-    const router = React.useMemo(() => typeof window !== 'undefined' ? require('next/navigation').useRouter() : null, []);
+    const router = useRouter();
 
     React.useEffect(() => {
         const storedUser = localStorage.getItem('lab_user');
@@ -260,7 +261,7 @@ export default function AdminDashboard() {
                         Gestión Integral de <span className="text-sky-400">Laboratorio</span>
                     </h1>
                     <p className="text-base text-slate-400 font-medium">
-                        Bienvenido de nuevo{user ? `, ${user.first_name} ${user.last_name}` : ''}. Aquí está el resumen de hoy.
+                        Bienvenido de nuevo{user ? `, ${formatFullName(user.first_name, user.last_name)}` : ''}. Aquí está el resumen de hoy.
                     </p>
                 </div>
 
@@ -346,7 +347,7 @@ export default function AdminDashboard() {
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <p className="text-sm font-bold text-white group-hover:text-sky-400 transition-colors">
-                                                        {appointment.user?.first_name} {appointment.user?.last_name}
+                                                        {formatFullName(appointment.user?.first_name || '', appointment.user?.last_name || '')}
                                                     </p>
                                                     <p className="text-[11px] text-slate-500 font-medium">Cédula: {appointment.user?.uid}</p>
                                                     {appointment.exam_appointment_detail && appointment.exam_appointment_detail.length > 0 && (
@@ -435,7 +436,7 @@ export default function AdminDashboard() {
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <p className="text-sm font-bold text-white group-hover:text-sky-400 transition-colors">
-                                                        {appointment.user?.first_name} {appointment.user?.last_name}
+                                                        {formatFullName(appointment.user?.first_name || '', appointment.user?.last_name || '')}
                                                     </p>
                                                     <p className="text-[11px] text-slate-500 font-medium">Cédula: {appointment.user?.uid}</p>
                                                     {appointment.exam_appointment_detail && appointment.exam_appointment_detail.length > 0 && (
@@ -509,7 +510,7 @@ export default function AdminDashboard() {
                                 <div>
                                     <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-0.5">Paciente</p>
                                     <p className="text-base font-bold text-white">
-                                        {selectedAppointment.user?.first_name} {selectedAppointment.user?.last_name}
+                                        {formatFullName(selectedAppointment.user?.first_name || '', selectedAppointment.user?.last_name || '')}
                                     </p>
                                     <p className="text-xs text-white/60 font-medium">
                                         Cédula: {selectedAppointment.user?.uid}

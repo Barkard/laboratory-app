@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { formatFullName } from '@/utils/formatters';
 import Icon from '@/components/ui/Icon';
 
 interface HeaderProps {
@@ -46,7 +47,9 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                 <div className="flex items-center space-x-3 pl-3 md:pl-6 border-l border-white/10">
                     <div className="text-right hidden sm:block">
                         <p className="text-sm font-bold text-white">
-                            {user ? `${user.first_name} ${user.last_name}` : 'Cargando...'}
+                            {user
+                                ? formatFullName(user.first_name, user.last_name)
+                                : 'Cargando...'}
                         </p>
                         <p className="text-xs text-slate-400 capitalize">{roleName}</p>
                     </div>
