@@ -14,62 +14,81 @@ import {
     Autocomplete,
     Avatar,
     Paper,
-    Chip,
-    createFilterOptions
+    createFilterOptions,
+    AutocompleteRenderInputParams
 } from '@mui/material';
 import Icon from '../ui/Icon';
 import Input from '../ui/Input';
-import { Result, Appointment, AppointmentExamDetail, DynamicField } from '@/types';
+import { Result, Appointment, DynamicField } from '@/types';
 import { formatDateTime } from '@/utils/formatters';
 
 interface ResultFormProps {
-    onSubmit: (data: { id_appointment_detail: number, delivery_date: string, result_data: string }) => void;
+    onSubmit: (results: { id_appointment_detail: number, delivery_date: string, result_data: string }[]) => void;
     onCancel: () => void;
     appointments: Appointment[];
+    initialAppointment?: Appointment | null;
     initialData?: Partial<Result>;
 }
 
 const filter = createFilterOptions<Appointment>();
 
-const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, appointments, initialData }) => {
-    const [selectedAppointment, setSelectedAppointment] = React.useState<Appointment | null>(null);
-    const [selectedDetail, setSelectedDetail] = React.useState<AppointmentExamDetail | null>(null);
+const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, appointments, initialAppointment }) => {
+    const [selectedAppointment, setSelectedAppointment] = React.useState<Appointment | null>(initialAppointment || null);
+    const [currentExamIndex, setCurrentExamIndex] = React.useState(0);
     const [deliveryDate, setDeliveryDate] = React.useState(new Date().toISOString().substring(0, 16));
-    const [dynamicData, setDynamicData] = React.useState<Record<string, any>>({});
+    const [resultsByDetail, setResultsByDetail] = React.useState<Record<number, Record<string, string | number | boolean>>>({});
 
-    // When appointment changes, reset detail and dynamic data
-    const handleAppointmentChange = (appointment: Appointment | null) => {
+    // When appointment changes, reset state
+    const handleAppointmentChange = React.useCallback((appointment: Appointment | null) => {
         setSelectedAppointment(appointment);
-        if (appointment && appointment.exam_appointment_detail && appointment.exam_appointment_detail.length > 0) {
-            // If only one exam, auto-select it
-            if (appointment.exam_appointment_detail.length === 1) {
-                setSelectedDetail(appointment.exam_appointment_detail[0]);
-            } else {
-                setSelectedDetail(null);
-            }
-        } else {
-            setSelectedDetail(null);
+        setCurrentExamIndex(0);
+        setResultsByDetail({});
+    }, []);
+
+    // Effect to handle initialAppointment from prop
+    React.useEffect(() => {
+        if (initialAppointment) {
+            handleAppointmentChange(initialAppointment);
         }
-        setDynamicData({});
+    }, [initialAppointment, handleAppointmentChange]);
+
+    const handleDynamicChange = (detailId: number, label: string, value: string | number | boolean) => {
+        setResultsByDetail(prev => ({
+            ...prev,
+            [detailId]: {
+                ...(prev[detailId] || {}),
+                [label]: value
+            }
+        }));
     };
 
-    const handleDynamicChange = (fieldId: string, value: any) => {
-        setDynamicData(prev => ({ ...prev, [fieldId]: value }));
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmitAll = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedDetail) return;
+        if (!selectedAppointment?.exam_appointment_detail) return;
 
-        onSubmit({
-            id_appointment_detail: selectedDetail.id_detail,
-            delivery_date: deliveryDate,
-            result_data: JSON.stringify(dynamicData)
-        });
+        const resultsToSubmit = selectedAppointment.exam_appointment_detail
+            .map(detail => {
+                const data = resultsByDetail[detail.id_detail];
+                if (data && Object.keys(data).length > 0) {
+                    return {
+                        id_appointment_detail: detail.id_detail,
+                        delivery_date: new Date(deliveryDate).toISOString(),
+                        result_data: JSON.stringify(data)
+                    };
+                }
+                return null;
+            })
+            .filter((r): r is { id_appointment_detail: number, delivery_date: string, result_data: string } => r !== null);
+
+        if (resultsToSubmit.length > 0) {
+            onSubmit(resultsToSubmit);
+        }
     };
 
-    // Get current exam and its fields
-    const currentExam = selectedDetail?.exam;
+    const details = selectedAppointment?.exam_appointment_detail || [];
+    const currentDetail = details[currentExamIndex];
+    const currentExam = currentDetail?.exam;
+    
     let customFields: DynamicField[] = [];
     if (currentExam?.custom_files?.json_schema) {
         try {
@@ -80,7 +99,7 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, appointment
     }
 
     return (
-        <Box component="form" onSubmit={handleSubmit}>
+        <Box component="form" onSubmit={handleSubmitAll}>
             <Stack spacing={4}>
                 {/* Appointment Selection Section */}
                 <Stack spacing={3}>
@@ -103,11 +122,9 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, appointment
                         }}
                         getOptionLabel={(option) => option.user ? `${option.user.first_name || ''} ${option.user.last_name || ''} ${option.user.uid || ''}`.trim() : `Cita #${option.id_appointment}`}
                         onChange={(_, value) => handleAppointmentChange(value)}
-                        renderOption={(props, option) => {
-                            const { key, ...otherProps } = props as any;
-                            return (
-                                <li key={key} {...otherProps}>
-                                    <Stack direction="row" spacing={2} alignItems="center" sx={{ py: 1, width: '100%' }}>
+                        renderOption={(props, option) => (
+                            <li {...props} key={option.id_appointment}>
+                                <Stack direction="row" spacing={2} alignItems="center" sx={{ py: 1, width: '100%' }}>
                                         <Avatar sx={{ bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', width: 32, height: 32, fontSize: '0.8rem' }}>
                                             {option.user?.first_name[0]}{option.user?.last_name[0]}
                                         </Avatar>
@@ -119,17 +136,10 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, appointment
                                                 Cédula: {option.user?.uid} • {formatDateTime(option.requested_date)}
                                             </Typography>
                                         </Stack>
-                                        <Chip
-                                            label={option.exam_appointment_detail?.[0]?.exam?.exam_type?.category_name || 'Examen'}
-                                            size="small"
-                                            variant="outlined"
-                                            sx={{ borderColor: 'rgba(255, 255, 255, 0.1)', color: 'rgba(255, 255, 255, 0.6)' }}
-                                        />
                                     </Stack>
                                 </li>
-                            );
-                        }}
-                        renderInput={(params) => (
+                        )}
+                        renderInput={(params: AutocompleteRenderInputParams) => (
                             <TextField
                                 {...params}
                                 label="Buscar por Nombre o Cédula"
@@ -156,72 +166,20 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, appointment
 
                     {selectedAppointment && (
                         <Paper variant="outlined" sx={{ p: 2, bgcolor: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)', borderRadius: '1rem' }}>
-                            <Stack spacing={1}>
-                                <Typography variant="caption" color="#10b981" fontWeight={700}>PACIENTE SELECCIONADO</Typography>
-                                <Typography variant="body1" fontWeight={600} color="white">
-                                    {selectedAppointment.user?.first_name} {selectedAppointment.user?.last_name}
-                                </Typography>
-                                <Typography variant="body2" color="rgba(255, 255, 255, 0.7)">
-                                    Cédula: {selectedAppointment.user?.uid}
-                                </Typography>
-                                <Typography variant="caption" color="rgba(255, 255, 255, 0.5)">
-                                    Cita para el: {formatDateTime(selectedAppointment.requested_date)}
-                                </Typography>
-                            </Stack>
-                        </Paper>
-                    )}
-
-                    {selectedAppointment && selectedAppointment.exam_appointment_detail && selectedAppointment.exam_appointment_detail.length > 1 && (
-                        <TextField
-                            select
-                            label="Seleccionar Examen de la Cita"
-                            value={selectedDetail?.id_detail || ''}
-                            onChange={(e) => {
-                                const detail = selectedAppointment.exam_appointment_detail?.find(d => d.id_detail === Number(e.target.value));
-                                setSelectedDetail(detail || null);
-                                setDynamicData({});
-                            }}
-                            fullWidth
-                            required
-                            slotProps={{
-                                input: {
-                                    sx: {
-                                        borderRadius: '0.75rem',
-                                        color: 'white',
-                                        '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
-                                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
-                                        bgcolor: 'rgba(255, 255, 255, 0.05)'
-                                    }
-                                },
-                                inputLabel: {
-                                    sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
-                                }
-                            }}
-                        >
-                            {selectedAppointment.exam_appointment_detail.map((detail) => (
-                                <MenuItem key={detail.id_detail} value={detail.id_detail}>
-                                    {detail.exam?.exam_type?.category_name || 'Examen'}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-                    )}
-
-                    {selectedDetail && (
-                        <Paper variant="outlined" sx={{ p: 2, bgcolor: 'rgba(56, 189, 248, 0.05)', borderColor: 'rgba(56, 189, 248, 0.2)', borderRadius: '1rem' }}>
-                            <Stack spacing={1}>
-                                <Typography variant="caption" color="#38bdf8" fontWeight={700}>EXAMEN A REALIZAR</Typography>
-                                <Typography variant="body1" fontWeight={600} color="white">
-                                    {selectedDetail.exam?.exam_type?.category_name}
-                                </Typography>
-                                {selectedDetail.exam?.exam_type?.requirements && (
-                                    <Box sx={{ mt: 1, p: 1.5, bgcolor: 'rgba(56, 189, 248, 0.1)', borderRadius: '0.6rem', borderLeft: '3px solid #38bdf8' }}>
-                                        <Typography variant="caption" color="rgba(255, 255, 255, 0.5)" display="block" mb={0.5}>Requisitos:</Typography>
-                                        <Typography variant="body2" color="white" sx={{ fontStyle: 'italic' }}>
-                                            {selectedDetail.exam.exam_type.requirements}
-                                        </Typography>
-                                    </Box>
-                                )}
+                            <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                <Stack spacing={0.5}>
+                                    <Typography variant="caption" color="#10b981" fontWeight={700}>PACIENTE</Typography>
+                                    <Typography variant="body2" fontWeight={600} color="white">
+                                        {selectedAppointment.user?.first_name} {selectedAppointment.user?.last_name}
+                                    </Typography>
+                                    <Typography variant="caption" color="rgba(255, 255, 255, 0.5)">
+                                        C.I: {selectedAppointment.user?.uid} • Cita: {formatDateTime(selectedAppointment.requested_date)}
+                                    </Typography>
+                                </Stack>
+                                <Stack alignItems="flex-end">
+                                    <Typography variant="caption" color="rgba(255, 255, 255, 0.4)">EXÁMENES</Typography>
+                                    <Typography variant="body2" fontWeight={700} color="#10b981">{details.length}</Typography>
+                                </Stack>
                             </Stack>
                         </Paper>
                     )}
@@ -235,94 +193,144 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, appointment
                     />
                 </Stack>
 
-                <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.05)' }} />
-
-                {/* Dynamic Fields Section */}
-                <Stack spacing={3}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Icon name="test-tube" size="xs" color="#10b981" />
-                        <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">Resultados del Examen</Typography>
-                    </Stack>
-
-                    {customFields.length > 0 ? (
-                        <Stack spacing={2.5}>
-                            {customFields.map((field) => (
-                                <Box key={field.id}>
-                                    {field.type === 'checkbox' ? (
-                                        <Box
-                                            sx={{
-                                                p: 2,
-                                                bgcolor: 'rgba(255, 255, 255, 0.03)',
-                                                borderRadius: '0.8rem',
-                                                border: '1px solid rgba(255, 255, 255, 0.08)',
-                                                display: 'flex',
-                                                alignItems: 'center'
-                                            }}
-                                        >
-                                            <FormControlLabel
-                                                control={
-                                                    <Checkbox
-                                                        checked={!!dynamicData[field.id]}
-                                                        onChange={(e) => handleDynamicChange(field.id, e.target.checked)}
-                                                        color="primary"
-                                                    />
-                                                }
-                                                label={<Typography variant="body2" fontWeight={500} color="#d1d5dc">{field.label}</Typography>}
-                                                sx={{ m: 0, '& .MuiCheckbox-root': { color: 'rgba(255, 255, 255, 0.3)', '&.Mui-checked': { color: '#10b981' } } }}
-                                            />
-                                        </Box>
-                                    ) : field.type === 'select' ? (
-                                        <TextField
-                                            select
-                                            fullWidth
-                                            label={field.label}
-                                            value={dynamicData[field.id] || ''}
-                                            onChange={(e) => handleDynamicChange(field.id, e.target.value)}
-                                            required
-                                            slotProps={{
-                                                input: {
-                                                    sx: {
-                                                        borderRadius: '0.75rem',
-                                                        color: 'white',
-                                                        '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
-                                                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
-                                                        bgcolor: 'rgba(255, 255, 255, 0.05)'
-                                                    }
-                                                },
-                                                inputLabel: {
-                                                    sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
-                                                }
-                                            }}
-                                        >
-                                            {field.options?.map(opt => (
-                                                <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                                            ))}
-                                        </TextField>
-                                    ) : (
-                                        <Input
-                                            label={field.label}
-                                            type={field.type === 'number' ? 'number' : 'text'}
-                                            value={dynamicData[field.id] || ''}
-                                            onChange={(e) => handleDynamicChange(field.id, e.target.value)}
-                                            required
-                                            placeholder={`Ingresar ${field.label.toLowerCase()}...`}
-                                        />
-                                    )}
+                {selectedAppointment && details.length > 0 && (
+                    <Box sx={{ position: 'relative' }}>
+                        <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.05)', mb: 4 }} />
+                        
+                        {/* Carousel Header / Navigation */}
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                                    {currentExamIndex + 1}
                                 </Box>
-                            ))}
+                                <Typography variant="subtitle1" fontWeight={700} color="white">
+                                    {currentExam?.exam_type?.category_name}
+                                </Typography>
+                            </Stack>
+                            
+                            <Stack direction="row" spacing={1}>
+                                <Button
+                                    size="small"
+                                    disabled={currentExamIndex === 0}
+                                    onClick={() => setCurrentExamIndex(prev => prev - 1)}
+                                    sx={{ minWidth: 40, p: 1, borderRadius: '0.8rem', color: '#94a3b8', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.05)' } }}
+                                >
+                                    <Icon name="chevron-left" size="xs" />
+                                </Button>
+                                <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', color: '#94a3b8', fontWeight: 600 }}>
+                                    {currentExamIndex + 1} / {details.length}
+                                </Typography>
+                                <Button
+                                    size="small"
+                                    disabled={currentExamIndex === details.length - 1}
+                                    onClick={() => setCurrentExamIndex(prev => prev + 1)}
+                                    sx={{ minWidth: 40, p: 1, borderRadius: '0.8rem', color: '#94a3b8', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.05)' } }}
+                                >
+                                    <Icon name="chevron-right" size="xs" />
+                                </Button>
+                            </Stack>
                         </Stack>
-                    ) : (
-                        <Box sx={{ py: 4, px: 2, textAlign: 'center', bgcolor: 'rgba(255, 255, 255, 0.02)', border: '1px dashed rgba(255, 255, 255, 0.1)', borderRadius: '1rem' }}>
-                            <Icon name="info-circle" size="md" color="rgba(255, 255, 255, 0.2)" />
-                            <Typography variant="body2" color="rgba(209, 213, 220, 0.4)" mt={2}>
-                                {selectedDetail
-                                    ? "Este examen no tiene campos configurados para resultados."
-                                    : "Seleccione un paciente y examen para ingresar resultados."}
-                            </Typography>
-                        </Box>
-                    )}
-                </Stack>
+
+                        {/* Slide Content */}
+                        <Paper 
+                            variant="outlined" 
+                            sx={{ 
+                                p: 4, 
+                                borderRadius: '1.5rem', 
+                                bgcolor: 'rgba(255, 255, 255, 0.02)', 
+                                borderColor: 'rgba(255, 255, 255, 0.08)',
+                                minHeight: '200px',
+                                transition: 'all 0.3s ease'
+                            }}
+                        >
+                            {customFields.length > 0 ? (
+                                <Stack spacing={3}>
+                                    {customFields.map((field) => (
+                                        <Box key={field.id}>
+                                            {field.type === 'checkbox' ? (
+                                                <Box
+                                                    sx={{
+                                                        p: 2,
+                                                        bgcolor: 'rgba(255, 255, 255, 0.03)',
+                                                        borderRadius: '0.8rem',
+                                                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                                                        display: 'flex',
+                                                        alignItems: 'center'
+                                                    }}
+                                                >
+                                                    <FormControlLabel
+                                                        control={
+                                                            <Checkbox
+                                                                checked={!!resultsByDetail[currentDetail.id_detail]?.[field.label]}
+                                                                onChange={(e) => handleDynamicChange(currentDetail.id_detail, field.label, e.target.checked)}
+                                                                color="primary"
+                                                            />
+                                                        }
+                                                        label={<Typography variant="body2" fontWeight={500} color="#d1d5dc">{field.label}</Typography>}
+                                                        sx={{ m: 0, '& .MuiCheckbox-root': { color: 'rgba(255, 255, 255, 0.3)', '&.Mui-checked': { color: '#10b981' } } }}
+                                                    />
+                                                </Box>
+                                            ) : field.type === 'select' ? (
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label={field.label}
+                                                    value={resultsByDetail[currentDetail.id_detail]?.[field.label] || ''}
+                                                    onChange={(e) => handleDynamicChange(currentDetail.id_detail, field.label, e.target.value)}
+                                                    required
+                                                    slotProps={{
+                                                        input: {
+                                                            sx: {
+                                                                borderRadius: '0.75rem',
+                                                                color: 'white',
+                                                                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                                                                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                                                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
+                                                                bgcolor: 'rgba(255, 255, 255, 0.05)'
+                                                            }
+                                                        },
+                                                        inputLabel: {
+                                                            sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
+                                                        }
+                                                    }}
+                                                >
+                                                    {field.options?.map(opt => (
+                                                        <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                                                    ))}
+                                                </TextField>
+                                            ) : (
+                                                <Input
+                                                    label={field.label}
+                                                    type={field.type === 'number' ? 'number' : 'text'}
+                                                    value={String(resultsByDetail[currentDetail.id_detail]?.[field.label] ?? '')}
+                                                    onChange={(e) => handleDynamicChange(currentDetail.id_detail, field.label, e.target.value)}
+                                                    required
+                                                    placeholder={`Ingresar ${field.label.toLowerCase()}...`}
+                                                />
+                                            )}
+                                        </Box>
+                                    ))}
+                                </Stack>
+                            ) : (
+                                <Box sx={{ py: 4, textAlign: 'center' }}>
+                                    <Icon name="info-circle" size="md" color="rgba(255, 255, 255, 0.2)" />
+                                    <Typography variant="body2" color="rgba(209, 213, 220, 0.4)" mt={2}>
+                                        Este examen no tiene campos configurados para resultados.
+                                    </Typography>
+                                </Box>
+                            )}
+                        </Paper>
+                    </Box>
+                )}
+
+                {!selectedAppointment && (
+                    <Box sx={{ py: 8, px: 2, textAlign: 'center', bgcolor: 'rgba(255, 255, 255, 0.02)', border: '1px dashed rgba(255, 255, 255, 0.1)', borderRadius: '1.5rem' }}>
+                        <Icon name="user-plus" size="md" color="rgba(255, 255, 255, 0.1)" />
+                        <Typography variant="body2" color="rgba(209, 213, 220, 0.3)" mt={2}>
+                            Seleccione un paciente para comenzar a cargar resultados.
+                        </Typography>
+                    </Box>
+                )}
 
                 {/* Footer Actions */}
                 <Stack direction="row" spacing={2} justifyContent="flex-end" pt={4}>
@@ -346,7 +354,7 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, appointment
                     <Button
                         type="submit"
                         variant="contained"
-                        disabled={!selectedDetail}
+                        disabled={!selectedAppointment || Object.keys(resultsByDetail).length === 0}
                         sx={{
                             borderRadius: '0.8rem',
                             textTransform: 'none',
@@ -363,7 +371,7 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, appointment
                             }
                         }}
                     >
-                        Registrar Resultado
+                        Registrar Todos los Resultados ({Object.keys(resultsByDetail).length})
                     </Button>
                 </Stack>
             </Stack>

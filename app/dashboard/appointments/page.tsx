@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Icon from '@/components/ui/Icon';
 import ScrollReveal from '@/components/ui/ScrollReveal';
-import { Appointment, User } from '@/types';
+import { Appointment, User, Exam } from '@/types';
 import { formatDateTime, formatFullName } from '@/utils/formatters';
 import {
     DataGrid,
@@ -14,14 +14,12 @@ import {
     GridRenderCellParams,
     GridRowId
 } from '@mui/x-data-grid';
+import { Snackbar, Alert } from '@mui/material';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import AppointmentForm from '@/components/appointments/AppointmentForm';
+import ResultForm from '@/components/results/ResultForm';
 import { apiFetch } from '@/utils/api';
-
-const appointmentsData: Appointment[] = [];
-
-const mockExams: any[] = [];
 
 const StatusBadge = ({ status }: { status: string }) => {
     const variants: Record<string, string> = {
@@ -49,12 +47,14 @@ export default function AppointmentsPage() {
     const [rows, setRows] = React.useState<Appointment[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [users, setUsers] = React.useState<User[]>([]);
-    const [exams, setExams] = React.useState<any[]>([]);
+    const [exams, setExams] = React.useState<Exam[]>([]);
 
     const [selectionModel, setSelectionModel] = React.useState<GridRowSelectionModel>({ type: 'include', ids: new Set<GridRowId>() });
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [selectedAppointment, setSelectedAppointment] = React.useState<Appointment | null>(null);
     const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
+    const [isResultModalOpen, setIsResultModalOpen] = React.useState(false);
+    const [selectedAppointmentForResult, setSelectedAppointmentForResult] = React.useState<Appointment | null>(null);
     const [isUpdating, setIsUpdating] = React.useState(false);
     const [confirmModal, setConfirmModal] = React.useState<{
         open: boolean;
@@ -91,12 +91,12 @@ export default function AppointmentsPage() {
             const [appData, userData, examData] = await Promise.all([
                 apiFetch<Appointment[]>('/appointments'),
                 apiFetch<User[]>('/users'),
-                apiFetch<any[]>('/exams')
+                apiFetch<Exam[]>('/exams')
             ]);
 
-            setRows(Array.isArray(appData) ? appData : ((appData as any).appointments || []));
-            setUsers(Array.isArray(userData) ? userData : ((userData as any).users || []));
-            setExams(Array.isArray(examData) ? examData : ((examData as any).exams || []));
+            setRows(Array.isArray(appData) ? appData : ((appData as { appointments?: Appointment[] }).appointments || []));
+            setUsers(Array.isArray(userData) ? userData : ((userData as { users?: User[] }).users || []));
+            setExams(Array.isArray(examData) ? examData : ((examData as { exams?: Exam[] }).exams || []));
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -106,7 +106,7 @@ export default function AppointmentsPage() {
 
     const selectedIds = Array.isArray(selectionModel)
         ? selectionModel
-        : Array.from((selectionModel as any).ids || []);
+        : Array.from((selectionModel as { ids: Set<GridRowId> }).ids || []);
 
     const handleDeleteSelected = async () => {
         if (selectedIds.length === 0) return;
@@ -130,7 +130,7 @@ export default function AppointmentsPage() {
         });
     };
 
-    const handleCreateAppointment = async (data: any) => {
+    const handleCreateAppointment = async (data: Partial<Appointment>) => {
         try {
             await apiFetch('/appointments', {
                 method: 'POST',
@@ -144,6 +144,8 @@ export default function AppointmentsPage() {
         }
     };
 
+    const [notification, setNotification] = React.useState<{ show: boolean, message: string, type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
+
     const handleUpdateStatus = async (id: number, status: string) => {
         setIsUpdating(true);
         try {
@@ -152,9 +154,31 @@ export default function AppointmentsPage() {
                 body: JSON.stringify({ status })
             });
             setIsViewModalOpen(false);
+            setNotification({ show: true, message: 'La cita ha sido aprobada correctamente', type: 'success' });
             fetchData();
         } catch (error) {
             console.error('Error updating appointment status:', error);
+            setNotification({ show: true, message: 'Error al actualizar el estado de la cita', type: 'error' });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleCreateResult = async (results: { id_appointment_detail: number, delivery_date: string, result_data: string }[]) => {
+        setIsUpdating(true);
+        try {
+            await Promise.all(
+                results.map(data => apiFetch('/results', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                }))
+            );
+            setNotification({ show: true, message: `${results.length} resultado(s) registrado(s) correctamente`, type: 'success' });
+            setIsResultModalOpen(false);
+            fetchData();
+        } catch (error) {
+            console.error('Error creating results:', error);
+            setNotification({ show: true, message: 'Error al registrar algunos resultados', type: 'error' });
         } finally {
             setIsUpdating(false);
         }
@@ -217,6 +241,18 @@ export default function AppointmentsPage() {
                             title="Editar"
                         >
                             <Icon name="edit-alt" size="xs" />
+                        </button>
+                    )}
+                    {params.row.status === 'AGENDADA' && (
+                        <button
+                            onClick={() => {
+                                setSelectedAppointmentForResult(params.row);
+                                setIsResultModalOpen(true);
+                            }}
+                            className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                            title="Subir Resultados"
+                        >
+                            <Icon name="vial" size="xs" />
                         </button>
                     )}
                     <button
@@ -361,7 +397,7 @@ export default function AppointmentsPage() {
                                     <div className="p-4 bg-white/3 rounded-2xl border border-white/5 space-y-2">
                                         <h3 className="text-xs font-bold text-white/50 uppercase tracking-wider">Observaciones</h3>
                                         <p className="text-sm text-white/80 italic leading-relaxed">
-                                            "{selectedAppointment.exam_appointment_detail[0].patient_observations}"
+                                            &ldquo;{selectedAppointment.exam_appointment_detail[0].patient_observations}&rdquo;
                                         </p>
                                     </div>
                                 )}
@@ -447,6 +483,19 @@ export default function AppointmentsPage() {
                     </div>
                 </ScrollReveal>
 
+                <Modal
+                    open={isResultModalOpen}
+                    onClose={() => setIsResultModalOpen(false)}
+                    title="Subir Resultado de Examen"
+                >
+                    <ResultForm 
+                        appointments={rows.filter(r => r.status === 'AGENDADA')}
+                        initialAppointment={selectedAppointmentForResult}
+                        onSubmit={handleCreateResult}
+                        onCancel={() => setIsResultModalOpen(false)}
+                    />
+                </Modal>
+
                 <ConfirmModal
                     open={confirmModal.open}
                     onClose={() => setConfirmModal(prev => ({ ...prev, open: false }))}
@@ -454,6 +503,22 @@ export default function AppointmentsPage() {
                     title={confirmModal.title}
                     description={confirmModal.description}
                 />
+
+                <Snackbar 
+                    open={notification.show} 
+                    autoHideDuration={4000} 
+                    onClose={() => setNotification(prev => ({...prev, show: false}))}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                >
+                    <Alert 
+                        onClose={() => setNotification(prev => ({...prev, show: false}))} 
+                        severity={notification.type} 
+                        variant="filled"
+                        sx={{ width: '100%', borderRadius: '1rem', fontWeight: 600 }}
+                    >
+                        {notification.message}
+                    </Alert>
+                </Snackbar>
             </div>
         </DashboardLayout>
     );

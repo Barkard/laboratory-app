@@ -6,7 +6,7 @@ import Icon from '@/components/ui/Icon';
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import { formatDateTime } from '@/utils/formatters';
 import Modal from '@/components/ui/Modal';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, API_BASE_URL } from '@/utils/api';
 import { Result } from '@/types';
 import { useRouter } from 'next/navigation';
 
@@ -56,6 +56,27 @@ export default function PatientResultsPage() {
         const examName = (row.exam_appointment_detail?.exam?.exam_type?.category_name || '').toLowerCase();
         return examName.includes(searchTerm.toLowerCase());
     });
+
+    const handleDownloadPDF = async (id: number) => {
+        try {
+            const url = `${API_BASE_URL}/results/pdf/${id}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Error al generar PDF');
+            
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = `resultado_${id}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (error) {
+            console.error('Error downloading PDF:', error);
+            alert('No se pudo descargar el PDF');
+        }
+    };
 
     return (
         <DashboardLayout>
@@ -159,7 +180,10 @@ export default function PatientResultsPage() {
                             </div>
 
                             <div className="flex gap-3 pt-2">
-                                <button className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white text-sm font-bold rounded-xl transition-all duration-300 shadow-lg shadow-sky-500/20">
+                                <button 
+                                    onClick={() => handleDownloadPDF(viewingResult.id_result)}
+                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-sky-500 hover:bg-sky-600 active:bg-sky-700 text-white text-sm font-bold rounded-xl transition-all duration-300 shadow-lg shadow-sky-500/20"
+                                >
                                     <Icon name="download" size="xs" />
                                     Descargar PDF
                                 </button>

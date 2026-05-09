@@ -8,11 +8,19 @@ export interface User {
     id_role: number;
 }
 
+export interface ClassExam {
+    id_class: number;
+    class_name: string;
+    exam_types?: ExamType[];
+}
+
 export interface ExamType {
     id_type: number;
+    id_class?: number;
     category_name: string;
     detail: string;
     requirements?: string;
+    class_exam?: ClassExam;
 }
 
 export interface CustomFile {

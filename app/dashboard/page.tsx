@@ -91,11 +91,11 @@ export default function AdminDashboard() {
         totalAppointments: '0',
         pendingResults: '0',
         examsPerformed: '0',
-        pendingAppointments: [] as any[],
-        scheduledAppointments: [] as any[]
+        pendingAppointments: [] as Appointment[],
+        scheduledAppointments: [] as Appointment[]
     });
     const [isLoading, setIsLoading] = React.useState(true);
-    const [user, setUser] = React.useState<any>(null);
+    const [user, setUser] = React.useState<{id_user: number, first_name: string, last_name: string, id_role: number} | null>(null);
     const [pendingSearchTerm, setPendingSearchTerm] = React.useState('');
     const [scheduledSearchTerm, setScheduledSearchTerm] = React.useState('');
 
@@ -130,9 +130,15 @@ export default function AdminDashboard() {
                 })
                 .filter(a => a.exam_appointment_detail && a.exam_appointment_detail.length > 0);
 
-            // If we arrived from a specific button, we could find that appointment
-            // For now, the select will show all available ones.
             setAppointmentsForUpload(availableApps);
+
+            // Si se pasó un ID, intentamos encontrar esa cita en la lista disponible
+            if (presetAppointmentId) {
+                const found = availableApps.find(a => a.id_appointment === presetAppointmentId);
+                if (found) {
+                    setSelectedAppointment(found);
+                }
+            }
         } catch (error) {
             console.error('Error fetching appointments for upload:', error);
         } finally {
@@ -140,12 +146,14 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleCreateResult = async (data: { id_appointment_detail: number, delivery_date: string, result_data: string }) => {
+    const handleCreateResult = async (results: { id_appointment_detail: number, delivery_date: string, result_data: string }[]) => {
         try {
-            await apiFetch('/results', {
-                method: 'POST',
-                body: JSON.stringify(data)
-            });
+            await Promise.all(
+                results.map(data => apiFetch('/results', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                }))
+            );
 
             // Si tenemos la cita seleccionada y su estado es AGENDADA, la pasamos a COMPLETADA
             if (selectedAppointment && selectedAppointment.status === 'AGENDADA') {
@@ -158,9 +166,10 @@ export default function AdminDashboard() {
             setIsUploadPopupOpen(false);
             // Re-fetch everything to ensure consistency
             await fetchStats();
-        } catch (error: any) {
-            console.error('Error creating result:', error);
-            alert(`Error al registrar el resultado: ${error.message || 'Error interno'}`);
+        } catch (error: unknown) {
+            console.error('Error creating results:', error);
+            const message = error instanceof Error ? error.message : 'Error interno';
+            alert(`Error al registrar los resultados: ${message}`);
         }
     };
 
@@ -203,24 +212,37 @@ export default function AdminDashboard() {
     const fetchStats = async () => {
         try {
             const [statsData, appData] = await Promise.all([
-                apiFetch<any>('/stats/dashboard'),
-                apiFetch<any>('/appointments').catch(() => [])
+                apiFetch<{
+                    totalUsers: number,
+                    totalAppointments: number,
+                    pendingResults: number,
+                    examsPerformed: number,
+                    pendingAppointments: Appointment[]
+                }>('/stats/dashboard'),
+                apiFetch<Appointment[]>('/appointments').catch(() => [])
             ]);
 
-            const allAppointments = Array.isArray(appData) ? appData : (appData?.appointments || []);
+            const allAppointments = Array.isArray(appData) ? appData : [];
+
+            // Calcular citas pendientes para hoy
+            const today = new Date().toISOString().split('T')[0];
+            const todayPendingCount = allAppointments.filter((app: Appointment) => {
+                const appDate = new Date(app.requested_date).toISOString().split('T')[0];
+                return appDate === today && app.status === 'PENDIENTE';
+            }).length;
 
             // Cruzamos data.pendingAppointments con allAppointments para rellenar los detalles del examen 
-            const enrichedPendingAppointments = (statsData.pendingAppointments || []).map((pending: any) => {
-                const fullApp = allAppointments.find((a: any) => a.id_appointment === pending.id_appointment);
+            const enrichedPendingAppointments = (statsData.pendingAppointments || []).map((pending: Appointment) => {
+                const fullApp = allAppointments.find((a: Appointment) => a.id_appointment === pending.id_appointment);
                 return fullApp && fullApp.exam_appointment_detail ? { ...pending, exam_appointment_detail: fullApp.exam_appointment_detail } : pending;
             });
 
             // Obtenemos citas agendadas directamente del listado completo (ya tienen detalles)
-            const scheduledAppointments = allAppointments.filter((a: any) => a.status === 'AGENDADA').slice(0, 5);
+            const scheduledAppointments = allAppointments.filter((a: Appointment) => a.status === 'AGENDADA').slice(0, 5);
 
             setStats({
                 totalUsers: statsData.totalUsers?.toString() || '0',
-                totalAppointments: statsData.totalAppointments?.toString() || '0',
+                totalAppointments: todayPendingCount.toString(),
                 pendingResults: statsData.pendingResults?.toString() || '0',
                 examsPerformed: statsData.examsPerformed?.toString() || '0',
                 pendingAppointments: enrichedPendingAppointments,
@@ -238,17 +260,17 @@ export default function AdminDashboard() {
     }, []);
 
     const filteredPending = stats.pendingAppointments.filter(app => {
-        const fullName = `${app.user?.first_name} ${app.user?.last_name}`.toLowerCase();
+        const fullName = `${app.user?.first_name || ''} ${app.user?.last_name || ''}`.toLowerCase();
         const uid = (app.user?.uid || '').toLowerCase();
-        const exams = (app.exam_appointment_detail || []).map((d: any) => d.exam?.exam_type?.category_name || '').join(' ').toLowerCase();
+        const exams = (app.exam_appointment_detail || []).map((d: {exam?: {exam_type?: {category_name: string}}}) => d.exam?.exam_type?.category_name || '').join(' ').toLowerCase();
         const search = pendingSearchTerm.toLowerCase();
         return fullName.includes(search) || uid.includes(search) || exams.includes(search);
     });
 
     const filteredScheduled = stats.scheduledAppointments.filter(app => {
-        const fullName = `${app.user?.first_name} ${app.user?.last_name}`.toLowerCase();
+        const fullName = `${app.user?.first_name || ''} ${app.user?.last_name || ''}`.toLowerCase();
         const uid = (app.user?.uid || '').toLowerCase();
-        const exams = (app.exam_appointment_detail || []).map((d: any) => d.exam?.exam_type?.category_name || '').join(' ').toLowerCase();
+        const exams = (app.exam_appointment_detail || []).map((d: {exam?: {exam_type?: {category_name: string}}}) => d.exam?.exam_type?.category_name || '').join(' ').toLowerCase();
         const search = scheduledSearchTerm.toLowerCase();
         return fullName.includes(search) || uid.includes(search) || exams.includes(search);
     });
@@ -332,7 +354,7 @@ export default function AdminDashboard() {
                                         <p className="text-sm text-slate-500 animate-pulse">Cargando citas...</p>
                                     ) : filteredPending.length === 0 ? (
                                         <p className="text-sm text-slate-500 italic">No se encontraron citas pendientes.</p>
-                                    ) : filteredPending.map((appointment: any) => (
+                                    ) : filteredPending.map((appointment: Appointment) => (
                                         <div
                                             key={appointment.id_appointment}
                                             onClick={() => {
@@ -352,7 +374,7 @@ export default function AdminDashboard() {
                                                     <p className="text-[11px] text-slate-500 font-medium">Cédula: {appointment.user?.uid}</p>
                                                     {appointment.exam_appointment_detail && appointment.exam_appointment_detail.length > 0 && (
                                                         <p className="text-[11px] text-sky-400 font-bold mt-1 max-w-[200px] truncate">
-                                                            {appointment.exam_appointment_detail.map((d: any) => d.exam?.exam_type?.category_name).filter(Boolean).join(', ')}
+                                                            {appointment.exam_appointment_detail.map((d: {exam?: {exam_type?: {category_name: string}}}) => d.exam?.exam_type?.category_name).filter(Boolean).join(', ')}
                                                         </p>
                                                     )}
                                                 </div>
@@ -421,7 +443,7 @@ export default function AdminDashboard() {
                                         <p className="text-sm text-slate-500 animate-pulse">Cargando citas...</p>
                                     ) : filteredScheduled.length === 0 ? (
                                         <p className="text-sm text-slate-500 italic">No se encontraron citas agendadas.</p>
-                                    ) : filteredScheduled.map((appointment: any) => (
+                                    ) : filteredScheduled.map((appointment: Appointment) => (
                                         <div
                                             key={appointment.id_appointment}
                                             onClick={() => {
@@ -441,7 +463,7 @@ export default function AdminDashboard() {
                                                     <p className="text-[11px] text-slate-500 font-medium">Cédula: {appointment.user?.uid}</p>
                                                     {appointment.exam_appointment_detail && appointment.exam_appointment_detail.length > 0 && (
                                                         <p className="text-[11px] text-sky-400 font-bold mt-1 max-w-[200px] truncate">
-                                                            {appointment.exam_appointment_detail.map((d: any) => d.exam?.exam_type?.category_name).filter(Boolean).join(', ')}
+                                                            {appointment.exam_appointment_detail.map((d: {exam?: {exam_type?: {category_name: string}}}) => d.exam?.exam_type?.category_name).filter(Boolean).join(', ')}
                                                         </p>
                                                     )}
                                                 </div>
@@ -537,7 +559,7 @@ export default function AdminDashboard() {
                             <div className="p-4 bg-white/3 rounded-2xl border border-white/5 space-y-3">
                                 <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Exámenes Solicitados</p>
                                 <div className="flex flex-wrap gap-2">
-                                    {selectedAppointment.exam_appointment_detail?.map((detail: any) => (
+                                    {selectedAppointment.exam_appointment_detail?.map((detail: {id_detail: number, exam?: {exam_type?: {category_name: string}}}) => (
                                         <span
                                             key={detail.id_detail}
                                             className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[11px] font-bold text-white transition-colors hover:border-sky-500/30"
@@ -556,7 +578,7 @@ export default function AdminDashboard() {
                                 <div className="p-4 bg-white/3 rounded-2xl border border-white/5 space-y-2">
                                     <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Observaciones</p>
                                     <p className="text-sm text-white/80 italic leading-relaxed">
-                                        "{selectedAppointment.exam_appointment_detail[0].patient_observations}"
+                                        &ldquo;{selectedAppointment.exam_appointment_detail[0].patient_observations}&rdquo;
                                     </p>
                                 </div>
                             )}

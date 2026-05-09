@@ -5,19 +5,19 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Icon from '@/components/ui/Icon';
 import ScrollReveal from '@/components/ui/ScrollReveal';
-import { Exam, ExamType, CustomFile } from '@/types';
-import { GridRowId } from '@mui/x-data-grid';
+import { Exam, ExamType, ClassExam } from '@/types';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import ExamForm from '@/components/exams/ExamForm';
 import { DataGrid, GridColDef, GridRowSelectionModel, GridRenderCellParams } from '@mui/x-data-grid';
 import { apiFetch } from '@/utils/api';
 
-const examsData: (Exam & { type: string })[] = [];
+
 
 export default function ExamsPage() {
     const [allExamTypes, setAllExamTypes] = React.useState<ExamType[]>([]);
-    const [rows, setRows] = React.useState<any[]>([]);
+    const [classExams, setClassExams] = React.useState<ClassExam[]>([]);
+    const [rows, setRows] = React.useState<Exam[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
 
     const [selectionModel, setSelectionModel] = React.useState<GridRowSelectionModel>({
@@ -25,8 +25,8 @@ export default function ExamsPage() {
         ids: new Set()
     });
     const [isModalOpen, setIsModalOpen] = React.useState(false);
-    const [editingExam, setEditingExam] = React.useState<any>(null);
-    const [previewExam, setPreviewExam] = React.useState<any>(null);
+    const [editingExam, setEditingExam] = React.useState<Exam | null>(null);
+    const [previewExam, setPreviewExam] = React.useState<Exam | null>(null);
     const [confirmModal, setConfirmModal] = React.useState<{
         open: boolean;
         title: string;
@@ -58,14 +58,16 @@ export default function ExamsPage() {
     const fetchExams = async () => {
         setIsLoading(true);
         try {
-            const [examsData, typesData] = await Promise.all([
+            const [examsData, typesData, classData] = await Promise.all([
                 apiFetch<Exam[]>('/exams'),
-                apiFetch<ExamType[]>('/exams/types')
+                apiFetch<ExamType[]>('/exams/types'),
+                apiFetch<ClassExam[]>('/class-exam')
             ]);
 
-            // Adapt NestJS response (it returns the array directly)
-            setRows(Array.isArray(examsData) ? examsData : ((examsData as any).exams || []));
-            setAllExamTypes(Array.isArray(typesData) ? typesData : ((typesData as any).types || []));
+            // Adapt NestJS response
+            setRows(Array.isArray(examsData) ? examsData : []);
+            setAllExamTypes(Array.isArray(typesData) ? typesData : []);
+            setClassExams(Array.isArray(classData) ? classData : []);
         } catch (error) {
             console.error('Error fetching exams:', error);
         } finally {
@@ -96,20 +98,14 @@ export default function ExamsPage() {
             const url = editingExam ? `/exams/${editingExam.id_exam}` : `/exams`;
 
             // NestJS backend expects custom_file_data and id_type
-            const payload: any = {
+            const payload = {
                 id_type: data.id_type,
-            };
-
-            // For new exams, we always need either id_file or custom_file_data
-            // If data.id_file is not present, we create a new custom_file_data
-            if (!data.id_file) {
-                payload.custom_file_data = {
+                custom_file_data: !data.id_file ? {
                     config_name: data.config_name || `Config for ${data.name || 'Exam'}`,
                     json_schema: JSON.stringify(data.customFields || [])
-                };
-            } else {
-                payload.id_file = data.id_file;
-            }
+                } : undefined,
+                id_file: data.id_file || undefined
+            };
 
             await apiFetch(url, {
                 method,
@@ -127,14 +123,15 @@ export default function ExamsPage() {
         }
     };
 
-    const handleAddNewType = async (name: string, requirements: string) => {
+    const handleAddNewType = async (name: string, requirements: string, id_class?: number) => {
         try {
             const data = await apiFetch<ExamType>('/exams/types', {
                 method: 'POST',
                 body: JSON.stringify({
                     category_name: name,
                     detail: `Categoría para ${name}`,
-                    requirements: requirements
+                    requirements: requirements,
+                    id_class: id_class
                 })
             });
 
@@ -147,12 +144,43 @@ export default function ExamsPage() {
         }
     };
 
+    const handleAddNewClass = async (name: string) => {
+        try {
+            const data = await apiFetch<ClassExam>('/class-exam', {
+                method: 'POST',
+                body: JSON.stringify({
+                    class_name: name
+                })
+            });
+
+            setClassExams(prev => [...prev, data]);
+            return data.id_class;
+        } catch (error) {
+            console.error('Error adding class exam:', error);
+            alert('Error al crear la clase de examen.');
+            return undefined;
+        }
+    };
+
     const columns: GridColDef[] = [
         {
             field: 'name',
             headerName: 'Examen',
             width: 250,
             valueGetter: (value, row) => row.exam_type?.category_name || 'Sin nombre'
+        },
+        {
+            field: 'class',
+            headerName: 'Clase',
+            width: 180,
+            valueGetter: (value, row) => row.exam_type?.class_exam?.class_name || 'Sin clase',
+            renderCell: (params: GridRenderCellParams) => (
+                <div className="flex items-center h-full">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider leading-none bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                        {params.value}
+                    </span>
+                </div>
+            )
         },
         {
             field: 'type',
@@ -263,13 +291,15 @@ export default function ExamsPage() {
                     <ExamForm
                         key={editingExam?.id_exam || 'new'}
                         examTypes={allExamTypes}
+                        classExams={classExams}
                         onAddType={handleAddNewType}
+                        onAddClass={handleAddNewClass}
                         onSubmit={handleCreateExam}
                         onCancel={() => {
                             setIsModalOpen(false);
                             setEditingExam(null);
                         }}
-                        initialData={editingExam}
+                        initialData={editingExam || undefined}
                     />
                 </Modal>
 
@@ -366,7 +396,7 @@ export default function ExamsPage() {
 
                                 {fields.length > 0 ? (
                                     <div className="flex flex-col gap-6">
-                                        {fields.map((field: any) => (
+                                        {fields.map((field: { id: string, type: string, label: string }) => (
                                             <div key={field.id}>
                                                 {field.type === 'checkbox' ? (
                                                     <div className="flex items-center gap-2">

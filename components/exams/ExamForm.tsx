@@ -17,7 +17,7 @@ import {
 } from '@mui/material';
 import Icon from '../ui/Icon';
 import Input from '../ui/Input';
-import { Exam, ExamType } from '@/types';
+import { Exam, ExamType, ClassExam } from '@/types';
 
 interface DynamicField {
     id: string;
@@ -30,11 +30,13 @@ interface ExamFormProps {
     onSubmit: (exam: Partial<Exam & { name?: string; customFields: DynamicField[] }>) => void;
     onCancel: () => void;
     examTypes: ExamType[];
-    onAddType: (name: string, requirements: string) => Promise<number | undefined>;
+    classExams: ClassExam[];
+    onAddType: (name: string, requirements: string, id_class?: number) => Promise<number | undefined>;
+    onAddClass?: (name: string) => Promise<number | undefined>;
     initialData?: Partial<Exam & { customFields: DynamicField[] }>;
 }
 
-const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAddType, initialData }) => {
+const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, classExams, onAddType, onAddClass, initialData }) => {
     // Helper to get initial fields
     const getInitialFields = () => {
         if (initialData?.customFields) return initialData.customFields;
@@ -50,28 +52,42 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
     };
 
     const [typeId, setTypeId] = React.useState(initialData?.id_type || (examTypes.length > 0 ? examTypes[0].id_type : 0));
+    const [selectedClassId, setSelectedClassId] = React.useState<number | ''>('');
     const [fields, setFields] = React.useState<DynamicField[]>(getInitialFields());
 
     // New type creation state
     const [isAddingType, setIsAddingType] = React.useState(false);
     const [newTypeName, setNewTypeName] = React.useState('');
     const [requirements, setRequirements] = React.useState('');
+    const [isAddingClass, setIsAddingClass] = React.useState(false);
+    const [newClassName, setNewClassName] = React.useState('');
     const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
 
     const handleSaveNewType = async () => {
         if (!newTypeName.trim()) return;
-        const newId = await onAddType(newTypeName, requirements);
+        const newId = await onAddType(newTypeName, requirements, selectedClassId || undefined);
         if (newId) {
             setTypeId(newId);
             setNewTypeName('');
             setRequirements('');
+            setSelectedClassId('');
             setIsAddingType(false);
+        }
+    };
+
+    const handleSaveNewClass = async () => {
+        if (!newClassName.trim() || !onAddClass) return;
+        const newId = await onAddClass(newClassName);
+        if (newId) {
+            setSelectedClassId(newId);
+            setNewClassName('');
+            setIsAddingClass(false);
         }
     };
 
     const addField = () => {
         const newField: DynamicField = {
-            id: Math.random().toString(36).substr(2, 9),
+            id: `field_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             label: '',
             type: 'text'
         };
@@ -152,17 +168,98 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                             </IconButton>
                         </Stack>
                     ) : (
-                        <Stack spacing={1.5}>
+                        <Stack spacing={2}>
                             <Stack direction="row" spacing={1} alignItems="flex-start">
+                                <Box flex={1}>
+                                    {!isAddingClass ? (
+                                        <Stack direction="row" spacing={1} alignItems="flex-start">
+                                            <TextField
+                                                select
+                                                label="Clase de Examen (Opcional)"
+                                                value={selectedClassId}
+                                                onChange={(e) => setSelectedClassId(e.target.value === '' ? '' : Number(e.target.value))}
+                                                fullWidth
+                                                slotProps={{
+                                                    input: {
+                                                        sx: {
+                                                            borderRadius: '0.75rem',
+                                                            color: 'white',
+                                                            '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                                                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
+                                                            bgcolor: 'rgba(255, 255, 255, 0.05)'
+                                                        }
+                                                    },
+                                                    inputLabel: {
+                                                        sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
+                                                    }
+                                                }}
+                                            >
+                                                <MenuItem value="">
+                                                    <em>Sin Clase</em>
+                                                </MenuItem>
+                                                {classExams.map((cls) => (
+                                                    <MenuItem key={cls.id_class} value={cls.id_class}>
+                                                        {cls.class_name}
+                                                    </MenuItem>
+                                                ))}
+                                            </TextField>
+                                            <IconButton
+                                                onClick={() => setIsAddingClass(true)}
+                                                sx={{
+                                                    mt: 1,
+                                                    bgcolor: 'rgba(16, 185, 129, 0.1)',
+                                                    color: '#10b981',
+                                                    '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.2)' }
+                                                }}
+                                            >
+                                                <Icon name="plus" size="xs" />
+                                            </IconButton>
+                                        </Stack>
+                                    ) : (
+                                        <Stack direction="row" spacing={1} alignItems="flex-start">
+                                            <Input
+                                                label="Nueva Clase"
+                                                placeholder="Ej. Hematología"
+                                                value={newClassName}
+                                                onChange={(e) => setNewClassName(e.target.value)}
+                                                autoFocus
+                                            />
+                                            <IconButton
+                                                onClick={handleSaveNewClass}
+                                                disabled={!newClassName.trim()}
+                                                sx={{
+                                                    mt: 4,
+                                                    bgcolor: 'rgba(16, 185, 129, 0.1)',
+                                                    color: '#10b981',
+                                                    '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.2)' }
+                                                }}
+                                            >
+                                                <Icon name="save" size="xs" />
+                                            </IconButton>
+                                            <IconButton
+                                                onClick={() => {
+                                                    setIsAddingClass(false);
+                                                    setNewClassName('');
+                                                }}
+                                                sx={{ mt: 4 }}
+                                                color="error"
+                                            >
+                                                <Icon name="x" size="xs" />
+                                            </IconButton>
+                                        </Stack>
+                                    )}
+                                </Box>
                                 <Box flex={1}>
                                     <Input
                                         label="Nuevo Nombre de Examen"
                                         placeholder="Ej. Glucosa Post-Prandial"
                                         value={newTypeName}
                                         onChange={(e) => setNewTypeName(e.target.value)}
-                                        autoFocus
                                     />
                                 </Box>
+                            </Stack>
+                            <Stack direction="row" spacing={1} alignItems="flex-start">
                                 <Box flex={2}>
                                     <TextField
                                         label="Requisitos / Notas (Opcional)"
@@ -173,21 +270,26 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                                         rows={2}
                                         fullWidth
                                         variant="outlined"
-                                        InputProps={{
-                                            sx: {
-                                                borderRadius: '0.75rem',
-                                                bgcolor: '#f8fafc',
-                                                '&:hover': { bgcolor: '#f1f5f9' },
+                                        slotProps={{
+                                            input: {
+                                                sx: {
+                                                    borderRadius: '0.75rem',
+                                                    color: 'white',
+                                                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                                                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
+                                                    bgcolor: 'rgba(255, 255, 255, 0.05)'
+                                                }
+                                            },
+                                            inputLabel: {
+                                                sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
                                             }
-                                        }}
-                                        InputLabelProps={{
-                                            sx: { color: '#64748b', fontWeight: 500 }
                                         }}
                                     />
                                 </Box>
                                 <IconButton
                                     onClick={() => setIsAddingType(false)}
-                                    sx={{ mt: 4 }}
+                                    sx={{ mt: 1 }}
                                     color="error"
                                 >
                                     <Icon name="x" size="xs" />
@@ -307,7 +409,7 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                                                     <Select
                                                         value={field.type}
                                                         label="Tipo"
-                                                        onChange={(e) => updateField(field.id, { type: e.target.value as any })}
+                                                        onChange={(e) => updateField(field.id, { type: e.target.value as DynamicField['type'] })}
                                                         sx={{
                                                             borderRadius: '0.6rem',
                                                             color: 'white',
@@ -338,8 +440,8 @@ const ExamForm: React.FC<ExamFormProps> = ({ onSubmit, onCancel, examTypes, onAd
                                             <Input
                                                 label="Opciones (separadas por coma)"
                                                 placeholder="Ej. Positivo, Negativo, Pendiente"
-                                                value={field.options?.join(', ') || ''}
-                                                onChange={(e) => updateField(field.id, { options: e.target.value.split(',').map(s => s.trim()).filter(s => s !== '') })}
+                                                value={field.options?.join(',') || ''}
+                                                onChange={(e) => updateField(field.id, { options: e.target.value.split(',').map(s => s.trim()) })}
                                                 required
                                             />
                                         )}

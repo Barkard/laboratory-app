@@ -5,28 +5,20 @@ import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Icon from '@/components/ui/Icon';
 import ScrollReveal from "@/components/ui/ScrollReveal";
-import { Result, Exam, DynamicField, Appointment } from '@/types';
+import { Result, DynamicField, Appointment } from '@/types';
 import { formatDateTime } from '@/utils/formatters';
 import Modal from '@/components/ui/Modal';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import ResultForm from '@/components/results/ResultForm';
-import { DataGrid, GridColDef, GridRowSelectionModel, GridRenderCellParams } from '@mui/x-data-grid';
-import { apiFetch } from '@/utils/api';
-
-// Mock exams with custom fields for testing
-const mockExams: Exam[] = [];
-const resultsData: any[] = [];
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import { apiFetch, API_BASE_URL } from '@/utils/api';
 
 export default function ResultsPage() {
-    const [rows, setRows] = React.useState<any[]>([]);
+    const [rows, setRows] = React.useState<Result[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [appointments, setAppointments] = React.useState<Appointment[]>([]);
-    const [selectionModel, setSelectionModel] = React.useState<GridRowSelectionModel>({
-        type: 'include',
-        ids: new Set()
-    });
     const [isModalOpen, setIsModalOpen] = React.useState(false);
-    const [viewingResult, setViewingResult] = React.useState<any>(null);
+    const [viewingResult, setViewingResult] = React.useState<Result | null>(null);
     const [confirmModal, setConfirmModal] = React.useState<{
         open: boolean;
         title: string;
@@ -65,11 +57,8 @@ export default function ResultsPage() {
             ]);
             setRows(resultsData || []);
 
-            // Get all id_appointment_detail that already have a result
             const existingResultDetailIds = new Set((resultsData || []).map(r => r.id_appointment_detail));
 
-            // Filter appointments to only those that are AGENDADA
-            // And filter their details to only those without results
             const availableApps = (appsData || [])
                 .filter(a => a.status === 'AGENDADA')
                 .map(a => {
@@ -81,7 +70,6 @@ export default function ResultsPage() {
                         )
                     };
                 })
-                // Only keep appointments that still have at least one detail pending result
                 .filter(a => a.exam_appointment_detail && a.exam_appointment_detail.length > 0);
 
             setAppointments(availableApps);
@@ -92,36 +80,45 @@ export default function ResultsPage() {
         }
     };
 
-    const selectedIds = Array.from(selectionModel.ids);
-
-    const handleDeleteSelected = () => {
-        if (selectedIds.length === 0) return;
-
-        setConfirmModal({
-            open: true,
-            title: '¿Eliminar resultados?',
-            description: `¿Está seguro que desea eliminar ${selectedIds.length} resultados? Esta acción no se puede deshacer.`,
-            onConfirm: () => {
-                setRows(rows.filter((row) => !selectionModel.ids.has(row.id_result)));
-                setSelectionModel({ type: 'include', ids: new Set() });
-            }
-        });
-    };
-
-    const handleCreateResult = async (data: { id_appointment_detail: number, delivery_date: string, result_data: string }) => {
+    const handleCreateResult = async (results: { id_appointment_detail: number, delivery_date: string, result_data: string }[]) => {
         setIsLoading(true);
         try {
-            await apiFetch('/results', {
-                method: 'POST',
-                body: JSON.stringify(data)
-            });
+            await Promise.all(
+                results.map(data => apiFetch('/results', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                }))
+            );
             await fetchData();
             setIsModalOpen(false);
-        } catch (error: any) {
-            console.error('Error creating result:', error);
-            alert(`Error al registrar el resultado: ${error.message || 'Error interno'}`);
+            alert(`${results.length} resultado(s) registrado(s) correctamente`);
+        } catch (error) {
+            console.error('Error creating results:', error);
+            const message = error instanceof Error ? error.message : 'Error interno';
+            alert(`Error al registrar algunos resultados: ${message}`);
         } finally {
             setIsLoading(false);
+        }
+    };
+    
+    const handleDownloadPDF = async (id: number) => {
+        try {
+            const url = `${API_BASE_URL}/results/pdf/${id}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Error al generar PDF');
+            
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = `resultado_${id}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (error) {
+            console.error('Error downloading PDF:', error);
+            alert('No se pudo descargar el PDF');
         }
     };
 
@@ -194,6 +191,7 @@ export default function ResultsPage() {
                         <Icon name="show" size="xs" />
                     </button>
                     <button
+                        onClick={() => handleDownloadPDF(params.row.id_result)}
                         className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
                         title="Imprimir"
                     >
@@ -205,8 +203,13 @@ export default function ResultsPage() {
                                 open: true,
                                 title: '¿Eliminar resultado?',
                                 description: '¿Está seguro que desea eliminar este resultado de laboratorio? Esta acción no se puede deshacer.',
-                                onConfirm: () => {
-                                    setRows(rows.filter(r => r.id_result !== params.row.id_result));
+                                onConfirm: async () => {
+                                    try {
+                                        await apiFetch(`/results/${params.row.id_result}`, { method: 'DELETE' });
+                                        fetchData();
+                                    } catch (error) {
+                                        console.error('Error deleting result:', error);
+                                    }
                                 }
                             });
                         }}
@@ -313,11 +316,11 @@ export default function ResultsPage() {
                                 <div className="flex flex-col gap-2">
                                     {(() => {
                                         const resultData = viewingResult.result_data ? JSON.parse(viewingResult.result_data) : {};
-                                        let schema: any[] = [];
+                                        let schema: DynamicField[] = [];
                                         try {
                                             const schemaStr = viewingResult.exam_appointment_detail?.exam?.custom_files?.json_schema;
                                             if (schemaStr) schema = JSON.parse(schemaStr);
-                                        } catch (e) {}
+                                        } catch { }
                                         
                                         const entries = Object.entries(resultData);
                                         
@@ -330,7 +333,7 @@ export default function ResultsPage() {
                                         }
 
                                         return entries.map(([key, value]) => {
-                                            const fieldDef = schema.find((f: any) => f.id === key);
+                                            const fieldDef = schema.find((f: DynamicField) => f.id === key);
                                             const label = fieldDef ? fieldDef.label : key;
 
                                             return (
@@ -344,7 +347,7 @@ export default function ResultsPage() {
                                                             <span className={`px-2 py-0 rounded-full text-[10px] uppercase tracking-wider border font-bold leading-none ${value ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
                                                                 {value ? 'Sí' : 'No'}
                                                             </span>
-                                                        ) : (value as any)}
+                                                        ) : String(value)}
                                                     </span>
                                                 </div>
                                             );
@@ -354,7 +357,10 @@ export default function ResultsPage() {
                             </div>
 
                             <div className="flex gap-3 pt-2">
-                                <button className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-white/5 hover:bg-white/10 text-white text-sm font-bold rounded-xl border border-white/10 transition-all duration-300">
+                                <button 
+                                    onClick={() => handleDownloadPDF(viewingResult.id_result)}
+                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 bg-white/5 hover:bg-white/10 text-white text-sm font-bold rounded-xl border border-white/10 transition-all duration-300"
+                                >
                                     <Icon name="printer" size="xs" />
                                     Imprimir
                                 </button>
@@ -429,4 +435,4 @@ export default function ResultsPage() {
             </div>
         </DashboardLayout>
     );
-};
+}
