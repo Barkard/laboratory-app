@@ -19,6 +19,7 @@ export default function ExamsPage() {
     const [classExams, setClassExams] = React.useState<ClassExam[]>([]);
     const [rows, setRows] = React.useState<Exam[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [user, setUser] = React.useState<any>(null);
 
     const [selectionModel, setSelectionModel] = React.useState<GridRowSelectionModel>({
         type: 'include',
@@ -44,8 +45,9 @@ export default function ExamsPage() {
         const storedUser = localStorage.getItem('lab_user');
         if (storedUser) {
             try {
-                const user = JSON.parse(storedUser);
-                if (user.id_role !== 1 && router) {
+                const parsedUser = JSON.parse(storedUser);
+                setUser(parsedUser);
+                if (parsedUser.id_role !== 1 && parsedUser.id_role !== 2 && router) {
                     router.push('/dashboard/patient');
                 }
             } catch (error) {
@@ -54,6 +56,8 @@ export default function ExamsPage() {
         }
         fetchExams();
     }, [router]);
+
+    const isAdmin = user?.id_role === 1;
 
     const fetchExams = async () => {
         setIsLoading(true);
@@ -219,22 +223,24 @@ export default function ExamsPage() {
                     >
                         <Icon name="edit-alt" size="xs" />
                     </button>
-                    <button
-                        onClick={() => {
-                            setConfirmModal({
-                                open: true,
-                                title: '¿Eliminar examen?',
-                                description: '¿Está seguro que desea eliminar este examen del catálogo? Esta acción no se puede deshacer.',
-                                onConfirm: () => {
-                                    setRows(rows.filter(r => r.id_exam !== params.row.id_exam));
-                                }
-                            });
-                        }}
-                        className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
-                        title="Eliminar"
-                    >
-                        <Icon name="trash" size="xs" />
-                    </button>
+                    {isAdmin && (
+                        <button
+                            onClick={() => {
+                                setConfirmModal({
+                                    open: true,
+                                    title: '¿Eliminar examen?',
+                                    description: '¿Está seguro que desea eliminar este examen del catálogo? Esta acción no se puede deshacer.',
+                                    onConfirm: () => {
+                                        setRows(rows.filter(r => r.id_exam !== params.row.id_exam));
+                                    }
+                                });
+                            }}
+                            className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                            title="Eliminar"
+                        >
+                            <Icon name="trash" size="xs" />
+                        </button>
+                    )}
                 </div>
             )
         }
@@ -258,7 +264,7 @@ export default function ExamsPage() {
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        {selectedIds.length > 0 && (
+                        {isAdmin && selectedIds.length > 0 && (
                             <button
                                 onClick={handleDeleteSelected}
                                 className="flex items-center gap-2 px-4 py-2 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white text-sm font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-rose-500/20"

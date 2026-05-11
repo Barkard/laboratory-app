@@ -45,6 +45,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     }, []);
 
     const isAdmin = user?.id_role === 1;
+    const isSupervisor = user?.id_role === 2;
+    const isStaff = isAdmin || isSupervisor;
 
     const handleLogout = () => {
         localStorage.removeItem('lab_user');
@@ -61,15 +63,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
         >
             <div className="p-6">
                 <div className="flex items-center space-x-3 mb-10">
-                    <div className="w-10 h-10 bg-linear-to-br from-sky-400 to-sky-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
-                        <Icon name="flask" size="md" />
+                    <div className="w-10 h-10 bg-linear-to-br from-sky-400 to-sky-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-sky-500/20 p-2 overflow-hidden shrink-0">
+                        <img src="/icon-white.svg" alt="Logo" className="w-full h-full object-contain" />
                     </div>
-                    <span className="text-xl font-bold text-white tracking-tight">LabSystem</span>
+                    <span className="text-xl font-black bg-linear-to-r from-sky-300 via-sky-500 to-sky-600 bg-clip-text text-transparent tracking-tight leading-tight">Hospital Carlos Roa</span>
                 </div>
 
                 <nav className="space-y-2">
-                    {/* Items visibles solo para Admin */}
-                    {isAdmin && (
+                    {/* Items visibles para Admin y Supervisor */}
+                    {isStaff && (
                         <>
                             <SidebarItem
                                 href="/dashboard"
@@ -95,17 +97,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
                                 label="Resultados"
                                 active={pathname === '/dashboard/results'}
                             />
-                            <SidebarItem
-                                href="/dashboard/users"
-                                icon="user"
-                                label="Usuarios"
-                                active={pathname === '/dashboard/users'}
-                            />
                         </>
                     )}
 
+                    {/* Usuarios SOLO para Admin */}
+                    {isAdmin && (
+                        <SidebarItem
+                            href="/dashboard/users"
+                            icon="user"
+                            label="Usuarios"
+                            active={pathname === '/dashboard/users'}
+                        />
+                    )}
+
                     {/* Si es paciente, la Vista Paciente es su 'Inicio' y va al principio */}
-                    {!isAdmin && user && (
+                    {!isStaff && user && (
                         <SidebarItem
                             href="/dashboard/patient"
                             icon="home-alt"
@@ -117,8 +123,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
             </div>
 
             <div className="mt-auto p-6 space-y-2">
-                {/* Vista Paciente para Admin (como vista de control) */}
-                {isAdmin && (
+                {/* Vista Paciente para Staff (como vista de control) */}
+                {isStaff && (
                     <SidebarItem
                         href="/dashboard/patient"
                         icon="user-circle"

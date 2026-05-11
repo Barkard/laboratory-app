@@ -16,6 +16,7 @@ import { apiFetch, API_BASE_URL } from '@/utils/api';
 export default function ResultsPage() {
     const [rows, setRows] = React.useState<Result[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [user, setUser] = React.useState<any>(null);
     const [appointments, setAppointments] = React.useState<Appointment[]>([]);
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [viewingResult, setViewingResult] = React.useState<Result | null>(null);
@@ -37,8 +38,9 @@ export default function ResultsPage() {
         const storedUser = localStorage.getItem('lab_user');
         if (storedUser) {
             try {
-                const user = JSON.parse(storedUser);
-                if (user.id_role !== 1 && router) {
+                const parsedUser = JSON.parse(storedUser);
+                setUser(parsedUser);
+                if (parsedUser.id_role !== 1 && parsedUser.id_role !== 2 && router) {
                     router.push('/dashboard/patient');
                 }
             } catch (error) {
@@ -47,6 +49,8 @@ export default function ResultsPage() {
         }
         fetchData();
     }, [router]);
+
+    const isAdmin = user?.id_role === 1;
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -197,27 +201,29 @@ export default function ResultsPage() {
                     >
                         <Icon name="printer" size="xs" />
                     </button>
-                    <button
-                        onClick={() => {
-                            setConfirmModal({
-                                open: true,
-                                title: '¿Eliminar resultado?',
-                                description: '¿Está seguro que desea eliminar este resultado de laboratorio? Esta acción no se puede deshacer.',
-                                onConfirm: async () => {
-                                    try {
-                                        await apiFetch(`/results/${params.row.id_result}`, { method: 'DELETE' });
-                                        fetchData();
-                                    } catch (error) {
-                                        console.error('Error deleting result:', error);
+                    {isAdmin && (
+                        <button
+                            onClick={() => {
+                                setConfirmModal({
+                                    open: true,
+                                    title: '¿Eliminar resultado?',
+                                    description: '¿Está seguro que desea eliminar este resultado de laboratorio? Esta acción no se puede deshacer.',
+                                    onConfirm: async () => {
+                                        try {
+                                            await apiFetch(`/results/${params.row.id_result}`, { method: 'DELETE' });
+                                            fetchData();
+                                        } catch (error) {
+                                            console.error('Error deleting result:', error);
+                                        }
                                     }
-                                }
-                            });
-                        }}
-                        className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
-                        title="Eliminar"
-                    >
-                        <Icon name="trash" size="xs" />
-                    </button>
+                                });
+                            }}
+                            className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                            title="Eliminar"
+                        >
+                            <Icon name="trash" size="xs" />
+                        </button>
+                    )}
                 </div>
             )
         }

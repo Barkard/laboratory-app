@@ -106,6 +106,7 @@ export default function AdminDashboard() {
     const [selectedAppointment, setSelectedAppointment] = React.useState<Appointment | null>(null);
     const [isViewModalOpen, setIsViewModalOpen] = React.useState(false);
     const [isUpdating, setIsUpdating] = React.useState(false);
+    const isAdmin = user?.id_role === 1;
 
     const handleOpenModal = async (presetAppointmentId?: number) => {
         setIsUploadPopupOpen(true);
@@ -199,8 +200,8 @@ export default function AdminDashboard() {
                 const parsedUser = JSON.parse(storedUser);
                 setUser(parsedUser);
 
-                // Redirigir si es paciente
-                if (parsedUser.id_role !== 1 && router) {
+                // Redirigir si no es ni admin ni supervisor
+                if (parsedUser.id_role !== 1 && parsedUser.id_role !== 2 && router) {
                     router.push('/dashboard/patient');
                 }
             } catch (error) {
@@ -224,11 +225,14 @@ export default function AdminDashboard() {
 
             const allAppointments = Array.isArray(appData) ? appData : [];
 
-            // Calcular citas pendientes para hoy
+            // Calcular citas para hoy (Pendientes para Admin, Agendadas para Supervisor)
             const today = new Date().toISOString().split('T')[0];
-            const todayPendingCount = allAppointments.filter((app: Appointment) => {
+            const isAdminRole = user?.id_role === 1;
+            
+            const todayCount = allAppointments.filter((app: Appointment) => {
                 const appDate = new Date(app.requested_date).toISOString().split('T')[0];
-                return appDate === today && app.status === 'PENDIENTE';
+                const targetStatus = isAdminRole ? 'PENDIENTE' : 'AGENDADA';
+                return appDate === today && app.status === targetStatus;
             }).length;
 
             // Cruzamos data.pendingAppointments con allAppointments para rellenar los detalles del examen 
@@ -242,7 +246,7 @@ export default function AdminDashboard() {
 
             setStats({
                 totalUsers: statsData.totalUsers?.toString() || '0',
-                totalAppointments: todayPendingCount.toString(),
+                totalAppointments: todayCount.toString(),
                 pendingResults: statsData.pendingResults?.toString() || '0',
                 examsPerformed: statsData.examsPerformed?.toString() || '0',
                 pendingAppointments: enrichedPendingAppointments,
@@ -256,8 +260,10 @@ export default function AdminDashboard() {
     };
 
     React.useEffect(() => {
-        fetchStats();
-    }, []);
+        if (user) {
+            fetchStats();
+        }
+    }, [user]);
 
     const filteredPending = stats.pendingAppointments.filter(app => {
         const fullName = `${app.user?.first_name || ''} ${app.user?.last_name || ''}`.toLowerCase();
@@ -318,95 +324,97 @@ export default function AdminDashboard() {
                     />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-                    {/* Pending Appointments Card */}
-                    <ScrollReveal delay={500}>
-                        <div className="h-full bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden flex flex-col">
-                            <div className="p-6 flex items-center justify-between border-b border-white/5">
-                                <h2 className="text-lg font-black text-white tracking-tight">
-                                    Citas pendientes
-                                </h2>
-                                <button
-                                    onClick={() => window.location.href = '/dashboard/appointments'}
-                                    className="group flex items-center gap-1.5 text-[10px] font-black text-sky-400 hover:text-sky-300 transition-all uppercase tracking-wider"
-                                >
-                                    <span>Ver todas</span>
-                                    <Icon name="arrow-right" size="xs" className="transition-transform group-hover:translate-x-0.5" />
-                                </button>
-                            </div>
-
-                            <div className="p-6">
-                                <div className="mb-6 relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Icon name="search" size="xs" color="#64748b" className="transition-colors group-focus-within:text-sky-400" />
-                                    </div>
-                                    <input
-                                        type="text"
-                                        placeholder="Buscar citas pendientes..."
-                                        value={pendingSearchTerm}
-                                        onChange={(e) => setPendingSearchTerm(e.target.value)}
-                                        className="w-full bg-slate-900/30 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500/20 transition-all duration-300"
-                                    />
+                <div className={`grid grid-cols-1 ${isAdmin ? 'lg:grid-cols-2' : ''} gap-8 mb-10`}>
+                    {/* Pending Appointments Card - Solo para Admin */}
+                    {isAdmin && (
+                        <ScrollReveal delay={500}>
+                            <div className="h-full bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-2xl overflow-hidden flex flex-col">
+                                <div className="p-6 flex items-center justify-between border-b border-white/5">
+                                    <h2 className="text-lg font-black text-white tracking-tight">
+                                        Citas pendientes
+                                    </h2>
+                                    <button
+                                        onClick={() => window.location.href = '/dashboard/appointments'}
+                                        className="group flex items-center gap-1.5 text-[10px] font-black text-sky-400 hover:text-sky-300 transition-all uppercase tracking-wider"
+                                    >
+                                        <span>Ver todas</span>
+                                        <Icon name="arrow-right" size="xs" className="transition-transform group-hover:translate-x-0.5" />
+                                    </button>
                                 </div>
 
-                                <div className="space-y-3">
-                                    {isLoading ? (
-                                        <p className="text-sm text-slate-500 animate-pulse">Cargando citas...</p>
-                                    ) : filteredPending.length === 0 ? (
-                                        <p className="text-sm text-slate-500 italic">No se encontraron citas pendientes.</p>
-                                    ) : filteredPending.map((appointment: Appointment) => (
-                                        <div
-                                            key={appointment.id_appointment}
-                                            onClick={() => {
-                                                setSelectedAppointment(appointment);
-                                                setIsViewModalOpen(true);
-                                            }}
-                                            className="group flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl bg-white/2 border border-white/5 hover:bg-white/5 hover:border-sky-500/30 transition-all duration-300 cursor-pointer"
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-xl bg-sky-500/10 flex items-center justify-center border border-sky-500/20 group-hover:scale-110 transition-transform duration-300">
-                                                    <Icon name="user" size="xs" className="text-sky-400" />
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <p className="text-sm font-bold text-white group-hover:text-sky-400 transition-colors">
-                                                        {formatFullName(appointment.user?.first_name || '', appointment.user?.last_name || '')}
-                                                    </p>
-                                                    <p className="text-[11px] text-slate-500 font-medium">Cédula: {appointment.user?.uid}</p>
-                                                    {appointment.exam_appointment_detail && appointment.exam_appointment_detail.length > 0 && (
-                                                        <p className="text-[11px] text-sky-400 font-bold mt-1 max-w-[200px] truncate">
-                                                            {appointment.exam_appointment_detail.map((d: {exam?: {exam_type?: {category_name: string}}}) => d.exam?.exam_type?.category_name).filter(Boolean).join(', ')}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
+                                <div className="p-6">
+                                    <div className="mb-6 relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Icon name="search" size="xs" color="#64748b" className="transition-colors group-focus-within:text-sky-400" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar citas pendientes..."
+                                            value={pendingSearchTerm}
+                                            onChange={(e) => setPendingSearchTerm(e.target.value)}
+                                            className="w-full bg-slate-900/30 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500/20 transition-all duration-300"
+                                        />
+                                    </div>
 
-                                            <div className="flex items-center justify-between md:justify-end gap-6 pl-16 md:pl-0">
-                                                <div className="text-right">
-                                                    <p className="text-xs font-black text-white">
-                                                        {formatDateTime(appointment.requested_date)}
-                                                    </p>
-                                                    <div className="mt-1">
-                                                        <StatusBadge status={appointment.status} />
+                                    <div className="space-y-3">
+                                        {isLoading ? (
+                                            <p className="text-sm text-slate-500 animate-pulse">Cargando citas...</p>
+                                        ) : filteredPending.length === 0 ? (
+                                            <p className="text-sm text-slate-500 italic">No se encontraron citas pendientes.</p>
+                                        ) : filteredPending.map((appointment: Appointment) => (
+                                            <div
+                                                key={appointment.id_appointment}
+                                                onClick={() => {
+                                                    setSelectedAppointment(appointment);
+                                                    setIsViewModalOpen(true);
+                                                }}
+                                                className="group flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl bg-white/2 border border-white/5 hover:bg-white/5 hover:border-sky-500/30 transition-all duration-300 cursor-pointer"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 rounded-xl bg-sky-500/10 flex items-center justify-center border border-sky-500/20 group-hover:scale-110 transition-transform duration-300">
+                                                        <Icon name="user" size="xs" className="text-sky-400" />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <p className="text-sm font-bold text-white group-hover:text-sky-400 transition-colors">
+                                                            {formatFullName(appointment.user?.first_name || '', appointment.user?.last_name || '')}
+                                                        </p>
+                                                        <p className="text-[11px] text-slate-500 font-medium">Cédula: {appointment.user?.uid}</p>
+                                                        {appointment.exam_appointment_detail && appointment.exam_appointment_detail.length > 0 && (
+                                                            <p className="text-[11px] text-sky-400 font-bold mt-1 max-w-[200px] truncate">
+                                                                {appointment.exam_appointment_detail.map((d: {exam?: {exam_type?: {category_name: string}}}) => d.exam?.exam_type?.category_name).filter(Boolean).join(', ')}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                <button
-                                                    disabled={isUpdating}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleUpdateStatus(appointment.id_appointment, 'AGENDADA');
-                                                    }}
-                                                    className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300 disabled:opacity-50"
-                                                    title="Agendar cita"
-                                                >
-                                                    <Icon name="calendar-event" size="xs" />
-                                                </button>
+
+                                                <div className="flex items-center justify-between md:justify-end gap-6 pl-16 md:pl-0">
+                                                    <div className="text-right">
+                                                        <p className="text-xs font-black text-white">
+                                                            {formatDateTime(appointment.requested_date)}
+                                                        </p>
+                                                        <div className="mt-1">
+                                                            <StatusBadge status={appointment.status} />
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        disabled={isUpdating}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleUpdateStatus(appointment.id_appointment, 'AGENDADA');
+                                                        }}
+                                                        className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300 disabled:opacity-50"
+                                                        title="Agendar cita"
+                                                    >
+                                                        <Icon name="calendar-event" size="xs" />
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </ScrollReveal>
+                        </ScrollReveal>
+                    )}
 
                     {/* Scheduled Appointments Card */}
                     <ScrollReveal delay={600}>

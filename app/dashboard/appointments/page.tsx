@@ -48,6 +48,7 @@ export default function AppointmentsPage() {
     const [isLoading, setIsLoading] = React.useState(true);
     const [users, setUsers] = React.useState<User[]>([]);
     const [exams, setExams] = React.useState<Exam[]>([]);
+    const [user, setUser] = React.useState<any>(null);
 
     const [selectionModel, setSelectionModel] = React.useState<GridRowSelectionModel>({ type: 'include', ids: new Set<GridRowId>() });
     const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -74,8 +75,9 @@ export default function AppointmentsPage() {
         const storedUser = localStorage.getItem('lab_user');
         if (storedUser) {
             try {
-                const user = JSON.parse(storedUser);
-                if (user.id_role !== 1 && router) {
+                const parsedUser = JSON.parse(storedUser);
+                setUser(parsedUser);
+                if (parsedUser.id_role !== 1 && parsedUser.id_role !== 2 && router) {
                     router.push('/dashboard/patient');
                 }
             } catch (error) {
@@ -84,6 +86,8 @@ export default function AppointmentsPage() {
         }
         fetchData();
     }, [router]);
+
+    const isAdmin = user?.id_role === 1;
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -235,7 +239,7 @@ export default function AppointmentsPage() {
                     >
                         <Icon name="show" size="xs" />
                     </button>
-                    {params.row.status === 'PENDIENTE' && (
+                    {params.row.status === 'PENDIENTE' && isAdmin && (
                         <button
                             className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
                             title="Editar"
@@ -255,28 +259,30 @@ export default function AppointmentsPage() {
                             <Icon name="vial" size="xs" />
                         </button>
                     )}
-                    <button
-                        onClick={() => {
-                            setConfirmModal({
-                                open: true,
-                                title: '¿Eliminar cita?',
-                                description: '¿Está seguro que desea eliminar esta cita médica? Esta acción no se puede deshacer.',
-                                onConfirm: async () => {
-                                    try {
-                                        await apiFetch(`/appointments/${params.row.id_appointment}`, { method: 'DELETE' });
-                                        fetchData();
-                                    } catch (error) {
-                                        console.error('Error deleting appointment:', error);
-                                        alert('Error al eliminar la cita.');
+                    {isAdmin && (
+                        <button
+                            onClick={() => {
+                                setConfirmModal({
+                                    open: true,
+                                    title: '¿Eliminar cita?',
+                                    description: '¿Está seguro que desea eliminar esta cita médica? Esta acción no se puede deshacer.',
+                                    onConfirm: async () => {
+                                        try {
+                                            await apiFetch(`/appointments/${params.row.id_appointment}`, { method: 'DELETE' });
+                                            fetchData();
+                                        } catch (error) {
+                                            console.error('Error deleting appointment:', error);
+                                            alert('Error al eliminar la cita.');
+                                        }
                                     }
-                                }
-                            });
-                        }}
-                        className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
-                        title="Eliminar"
-                    >
-                        <Icon name="trash" size="xs" />
-                    </button>
+                                });
+                            }}
+                            className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+                            title="Eliminar"
+                        >
+                            <Icon name="trash" size="xs" />
+                        </button>
+                    )}
                 </div>
             )
         }
@@ -403,7 +409,7 @@ export default function AppointmentsPage() {
                                 )}
 
                                 {/* Action Button */}
-                                {selectedAppointment.status === 'PENDIENTE' && (
+                                {selectedAppointment.status === 'PENDIENTE' && isAdmin && (
                                     <button
                                         disabled={isUpdating}
                                         onClick={() => handleUpdateStatus(selectedAppointment.id_appointment, 'AGENDADA')}

@@ -43,8 +43,8 @@ export default function PatientPage() {
 
                         <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
                             <div className="shrink-0 relative">
-                                <div className="w-32 h-32 md:w-40 md:h-40 bg-linear-to-br from-sky-400 to-sky-600 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-sky-500/30 rotate-3 transition-transform hover:rotate-0 duration-500">
-                                    <Icon name="user-circle" size="lg" className="text-6xl md:text-7xl" />
+                                <div className="w-32 h-32 md:w-40 md:h-40 bg-linear-to-br from-sky-400 to-sky-600 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-sky-500/30 rotate-3 transition-transform hover:rotate-0 duration-500 p-8 md:p-10 overflow-hidden">
+                                    <img src="/icon-white.svg" alt="Logo" className="w-full h-full object-contain" />
                                 </div>
                                 <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg border-4 border-slate-900 shrink-0">
                                     <Icon name="check-shield" size="xs" />

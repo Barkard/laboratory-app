@@ -49,8 +49,12 @@ const LoginForm: React.FC = () => {
                 </div>
             )}
             <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
-                    <Icon name="user-detail" type="solid" size="lg" className="text-blue-600" />
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-slate-100 rounded-full mb-4 p-4 shadow-inner border border-slate-50 overflow-hidden mx-auto">
+                    <img 
+                        src="/icon.svg" 
+                        alt="Logo Laboratorio" 
+                        className="w-full h-full object-contain opacity-90 transition-transform hover:scale-110 duration-500" 
+                    />
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900">Bienvenido</h1>
                 <p className="text-gray-500 mt-2">Ingrese su documento para continuar</p>
