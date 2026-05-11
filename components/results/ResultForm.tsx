@@ -101,74 +101,102 @@ const ResultForm: React.FC<ResultFormProps> = ({ onSubmit, onCancel, appointment
     return (
         <Box component="form" onSubmit={handleSubmitAll}>
             <Stack spacing={4}>
-                {/* Appointment Selection Section */}
+                {/* Header Section: Search or Patient Info */}
                 <Stack spacing={3}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Icon name="search" size="xs" color="#10b981" />
-                        <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">Buscar Cita / Paciente</Typography>
-                    </Stack>
+                    {!initialAppointment ? (
+                        <>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Icon name="search" size="xs" color="#10b981" />
+                                <Typography variant="subtitle1" fontWeight={700} color="#d1d5dc">
+                                    Buscar Cita / Paciente
+                                </Typography>
+                            </Stack>
 
-                    <Autocomplete
-                        options={appointments}
-                        filterOptions={(options, params) => {
-                            const filtered = filter(options, params);
-                            if (params.inputValue !== '') {
-                                return options.filter(option => {
-                                    const searchStr = `${option.user?.first_name || ''} ${option.user?.last_name || ''} ${option.user?.uid || ''} ${option.id_appointment}`.toLowerCase();
-                                    return searchStr.includes(params.inputValue.toLowerCase());
-                                });
-                            }
-                            return filtered;
-                        }}
-                        getOptionLabel={(option) => option.user ? `${option.user.first_name || ''} ${option.user.last_name || ''} ${option.user.uid || ''}`.trim() : `Cita #${option.id_appointment}`}
-                        onChange={(_, value) => handleAppointmentChange(value)}
-                        renderOption={(props, option) => (
-                            <li {...props} key={option.id_appointment}>
-                                <Stack direction="row" spacing={2} alignItems="center" sx={{ py: 1, width: '100%' }}>
-                                        <Avatar sx={{ bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', width: 32, height: 32, fontSize: '0.8rem' }}>
-                                            {option.user?.first_name[0]}{option.user?.last_name[0]}
-                                        </Avatar>
-                                        <Stack sx={{ minWidth: 0, flex: 1 }}>
-                                            <Typography variant="body2" fontWeight={600} noWrap>
-                                                {option.user?.first_name} {option.user?.last_name}
-                                            </Typography>
-                                            <Typography variant="caption" color="rgba(255, 255, 255, 0.5)">
-                                                Cédula: {option.user?.uid} • {formatDateTime(option.requested_date)}
-                                            </Typography>
-                                        </Stack>
-                                    </Stack>
-                                </li>
-                        )}
-                        renderInput={(params: AutocompleteRenderInputParams) => (
-                            <TextField
-                                {...params}
-                                label="Buscar por Nombre o Cédula"
-                                placeholder="Ej. 12345678 o Juan Pérez"
-                                slotProps={{
-                                    input: {
-                                        ...params.InputProps,
-                                        sx: {
-                                            borderRadius: '0.75rem',
-                                            color: 'white',
-                                            '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
-                                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
-                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
-                                            bgcolor: 'rgba(255, 255, 255, 0.05)'
-                                        }
-                                    },
-                                    inputLabel: {
-                                        sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
+                            <Autocomplete
+                                options={appointments}
+                                filterOptions={(options, params) => {
+                                    const filtered = filter(options, params);
+                                    if (params.inputValue !== '') {
+                                        return options.filter(option => {
+                                            const searchStr = `${option.user?.first_name || ''} ${option.user?.last_name || ''} ${option.user?.uid || ''} ${option.id_appointment}`.toLowerCase();
+                                            return searchStr.includes(params.inputValue.toLowerCase());
+                                        });
                                     }
+                                    return filtered;
                                 }}
+                                getOptionLabel={(option) => option.user ? `${option.user.first_name || ''} ${option.user.last_name || ''} ${option.user.uid || ''}`.trim() : `Cita #${option.id_appointment}`}
+                                onChange={(_, value) => handleAppointmentChange(value)}
+                                renderOption={(props, option) => (
+                                    <li {...props} key={option.id_appointment}>
+                                        <Stack direction="row" spacing={2} alignItems="center" sx={{ py: 1, width: '100%' }}>
+                                                <Avatar sx={{ bgcolor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', width: 32, height: 32, fontSize: '0.8rem' }}>
+                                                    {option.user?.first_name[0]}{option.user?.last_name[0]}
+                                                </Avatar>
+                                                <Stack sx={{ minWidth: 0, flex: 1 }}>
+                                                    <Typography variant="body2" fontWeight={600} noWrap>
+                                                        {option.user?.first_name} {option.user?.last_name}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="rgba(255, 255, 255, 0.5)">
+                                                        Cédula: {option.user?.uid} • {formatDateTime(option.requested_date)}
+                                                    </Typography>
+                                                </Stack>
+                                            </Stack>
+                                        </li>
+                                )}
+                                renderInput={(params: AutocompleteRenderInputParams) => (
+                                    <TextField
+                                        {...params}
+                                        label="Buscar por Nombre o Cédula"
+                                        placeholder="Ej. 12345678 o Juan Pérez"
+                                        slotProps={{
+                                            input: {
+                                                ...params.InputProps,
+                                                sx: {
+                                                    borderRadius: '0.75rem',
+                                                    color: 'white',
+                                                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                                                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                                                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#10b981' },
+                                                    bgcolor: 'rgba(255, 255, 255, 0.05)'
+                                                }
+                                            },
+                                            inputLabel: {
+                                                sx: { color: 'rgba(209, 213, 220, 0.6)', '&.Mui-focused': { color: '#10b981' } }
+                                            }
+                                        }}
+                                    />
+                                )}
                             />
-                        )}
-                    />
+                        </>
+                    ) : (
+                        <Box sx={{ p: 3, bgcolor: 'rgba(16, 185, 129, 0.1)', borderRadius: '1.5rem', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                            <Stack direction="row" spacing={3} alignItems="center">
+                                <Avatar sx={{ bgcolor: '#10b981', color: 'white', width: 56, height: 56, fontSize: '1.5rem', fontWeight: 'bold', boxShadow: '0 0 20px rgba(16, 185, 129, 0.3)' }}>
+                                    {selectedAppointment?.user?.first_name[0]}{selectedAppointment?.user?.last_name[0]}
+                                </Avatar>
+                                <Stack spacing={0.5}>
+                                    <Typography variant="h6" fontWeight={800} color="white">
+                                        {selectedAppointment?.user?.first_name} {selectedAppointment?.user?.last_name}
+                                    </Typography>
+                                    <Stack direction="row" spacing={2} alignItems="center">
+                                        <Typography variant="caption" sx={{ px: 1.5, py: 0.5, bgcolor: 'rgba(255, 255, 255, 0.05)', borderRadius: '0.5rem', color: '#10b981', fontWeight: 700 }}>
+                                            C.I: {selectedAppointment?.user?.uid}
+                                        </Typography>
+                                        <Typography variant="caption" color="rgba(255, 255, 255, 0.5)" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Icon name="calendar" size="xs" />
+                                            Cita: {formatDateTime(selectedAppointment?.requested_date || '')}
+                                        </Typography>
+                                    </Stack>
+                                </Stack>
+                            </Stack>
+                        </Box>
+                    )}
 
-                    {selectedAppointment && (
+                    {selectedAppointment && !initialAppointment && (
                         <Paper variant="outlined" sx={{ p: 2, bgcolor: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)', borderRadius: '1rem' }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="center">
                                 <Stack spacing={0.5}>
-                                    <Typography variant="caption" color="#10b981" fontWeight={700}>PACIENTE</Typography>
+                                    <Typography variant="caption" color="#10b981" fontWeight={700}>PACIENTE SELECCIONADO</Typography>
                                     <Typography variant="body2" fontWeight={600} color="white">
                                         {selectedAppointment.user?.first_name} {selectedAppointment.user?.last_name}
                                     </Typography>

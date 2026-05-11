@@ -13,10 +13,14 @@ interface SettingsFormProps {
 
 const SettingsForm: React.FC<SettingsFormProps> = ({ user, onSubmit }) => {
     const [formData, setFormData] = React.useState<Partial<User>>({
-        identity_card: user.identity_card,
-        first_name: user.first_name,
-        last_name: user.last_name,
+        uid: user?.uid || '',
+        first_name: user?.first_name || '',
+        last_name: user?.last_name || '',
+        email: user?.email || '',
+        phone: user?.phone || '',
+        address: user?.address || '',
     });
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -39,11 +43,12 @@ const SettingsForm: React.FC<SettingsFormProps> = ({ user, onSubmit }) => {
 
                     <Input
                         label="Número de Cédula"
-                        name="identity_card"
-                        value={formData.identity_card}
+                        name="uid"
+                        value={formData.uid}
                         onChange={handleChange}
                         placeholder="Ej. 12345678"
                         required
+                        disabled
                     />
 
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
@@ -64,6 +69,34 @@ const SettingsForm: React.FC<SettingsFormProps> = ({ user, onSubmit }) => {
                             required
                         />
                     </Stack>
+
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                        <Input
+                            label="Correo Electrónico"
+                            name="email"
+                            type="email"
+                            value={formData.email || ''}
+                            onChange={handleChange}
+                            placeholder="ejemplo@correo.com"
+                            required
+                        />
+                        <Input
+                            label="Teléfono"
+                            name="phone"
+                            value={formData.phone || ''}
+                            onChange={handleChange}
+                            placeholder="Ej. 04121234567"
+                            required
+                        />
+                    </Stack>
+
+                    <Input
+                        label="Dirección"
+                        name="address"
+                        value={formData.address || ''}
+                        onChange={handleChange}
+                        placeholder="Ej. Calle Principal #123"
+                    />
                 </Stack>
 
                 <Stack direction="row" spacing={2} justifyContent="flex-end" pt={2}>

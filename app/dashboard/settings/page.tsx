@@ -14,22 +14,34 @@ import {
     Divider
 } from '@mui/material';
 
-// Simulate current logged user
-const currentUser: User = {
-    user_id: 1,
-    identity_card: '12345678',
-    first_name: 'Leon',
-    last_name: 'Pineda'
-};
-
 export default function SettingsPage() {
-    const [user, setUser] = React.useState<User>(currentUser);
+    const [user, setUser] = React.useState<User | null>(null);
 
-    const handleUpdateProfile = (updatedData: Partial<User>) => {
-        // In a real app, this would be an API call
-        setUser(prev => ({ ...prev, ...updatedData }));
-        console.log('Profile updated:', updatedData);
-        // Here you could also add a toast notification
+    React.useEffect(() => {
+        const storedUser = localStorage.getItem('lab_user');
+        if (storedUser) {
+            try {
+                setUser(JSON.parse(storedUser));
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+            }
+        }
+    }, []);
+
+    const handleUpdateProfile = async (updatedData: Partial<User>) => {
+        if (!user) return;
+        try {
+            const updatedUser = await apiFetch<User>(`/users/${user.id_user}`, {
+                method: 'PATCH',
+                body: JSON.stringify(updatedData)
+            });
+            setUser(updatedUser);
+            localStorage.setItem('lab_user', JSON.stringify(updatedUser));
+            alert('Perfil actualizado correctamente');
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            alert('Error al actualizar el perfil');
+        }
     };
 
     return (
@@ -94,11 +106,16 @@ export default function SettingsPage() {
                         }} />
 
                         <Box sx={{ position: 'relative', zIndex: 1 }}>
-                            <SettingsForm
-                                user={user}
-                                onSubmit={handleUpdateProfile}
-                            />
+                            {user ? (
+                                <SettingsForm
+                                    user={user}
+                                    onSubmit={handleUpdateProfile}
+                                />
+                            ) : (
+                                <Typography color="white">Cargando perfil...</Typography>
+                            )}
                         </Box>
+
                     </Paper>
                 </ScrollReveal>
             </Box>

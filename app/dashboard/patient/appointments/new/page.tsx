@@ -47,10 +47,13 @@ export default function PatientNewAppointmentPage() {
     const [notification, setNotification] = useState<{show: boolean, message: string, type: 'success' | 'error'}>({ show: false, message: '', type: 'success' });
 
     const [formData, setFormData] = useState({
-        dia: '',
-        mes: '',
-        sug_time: '',
+        date: '',
+        time: '',
         observations: '',
+    });
+    const [formErrors, setFormErrors] = useState({
+        date: '',
+        time: '',
     });
 
     useEffect(() => {
@@ -105,6 +108,43 @@ export default function PatientNewAppointmentPage() {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+
+        // Real-time validation
+        if (name === 'date') {
+            if (!value) {
+                setFormErrors(prev => ({ ...prev, date: 'La fecha es requerida' }));
+                return;
+            }
+            
+            const selectedDate = new Date(value + 'T00:00:00');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (selectedDate < today) {
+                setFormErrors(prev => ({ ...prev, date: 'No se pueden solicitar citas en fechas pasadas' }));
+                return;
+            }
+
+            const dayOfWeek = selectedDate.getDay();
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                setFormErrors(prev => ({ ...prev, date: 'No se permiten fines de semana' }));
+            } else {
+                setFormErrors(prev => ({ ...prev, date: '' }));
+            }
+        }
+
+        if (name === 'time') {
+            if (!value) {
+                setFormErrors(prev => ({ ...prev, time: 'La hora es requerida' }));
+                return;
+            }
+            const [hours, minutes] = value.split(':').map(Number);
+            if (hours >= 17 && (hours > 17 || minutes > 0)) {
+                setFormErrors(prev => ({ ...prev, time: 'Máximo hasta las 5:00 PM' }));
+            } else {
+                setFormErrors(prev => ({ ...prev, time: '' }));
+            }
+        }
     };
 
     const handleSubmit = async () => {
@@ -115,18 +155,21 @@ export default function PatientNewAppointmentPage() {
             return;
         }
 
-        if (!formData.dia || !formData.mes || !formData.sug_time) {
+        if (!formData.date || !formData.time) {
             showNotification('Por favor complete la fecha y hora sugerida.', 'error');
+            return;
+        }
+
+        if (formErrors.date || formErrors.time) {
+            showNotification('Por favor corrija los errores en el formulario.', 'error');
             return;
         }
 
         setIsSubmitting(true);
         
         try {
-            const { dia, mes, sug_time, observations } = formData;
-            const currentYear = new Date().getFullYear();
-            const formattedDate = `${currentYear}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
-            const requested_date = `${formattedDate}T${sug_time}:00.000Z`;
+            const { date, time, observations } = formData;
+            const requested_date = `${date}T${time}:00.000Z`;
 
             // Note: the backend /appointments expects exam_ids
             // We need to map selectedExamTypes to actual Exam IDs if we had them, 
@@ -203,7 +246,7 @@ export default function PatientNewAppointmentPage() {
                         <Paper sx={{ p: 4, bgcolor: 'rgba(15, 23, 42, 0.4)', borderRadius: '2rem', border: '1px solid rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(10px)' }}>
                             <Stack spacing={3}>
                                 <Stack direction="row" spacing={1.5} alignItems="center">
-                                    <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyCenter: 'center', color: '#10b981', fontWeight: 'bold' }}>1</Box>
+                                    <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', fontWeight: 'bold' }}>1</Box>
                                     <Typography variant="h6" fontWeight={700} color="white">Seleccione la Clase de Examen</Typography>
                                 </Stack>
                                 
@@ -244,7 +287,7 @@ export default function PatientNewAppointmentPage() {
                                 <Stack spacing={3}>
                                     <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
                                         <Stack direction="row" spacing={1.5} alignItems="center">
-                                            <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyCenter: 'center', color: '#10b981', fontWeight: 'bold' }}>2</Box>
+                                            <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', fontWeight: 'bold' }}>2</Box>
                                             <Typography variant="h6" fontWeight={700} color="white">Tipos de Exámenes Disponibles</Typography>
                                         </Stack>
                                         {selectedExamTypes.length > 0 && (
@@ -360,37 +403,26 @@ export default function PatientNewAppointmentPage() {
                                     Información de la Cita
                                 </Typography>
                                 
-                                <Stack direction="row" spacing={2}>
-                                    <Box flex={1}>
-                                        <Input
-                                            label="Día"
-                                            name="dia"
-                                            placeholder="DD"
-                                            maxLength={2}
-                                            value={formData.dia}
-                                            onChange={handleChange}
-                                            required
-                                        />
-                                    </Box>
-                                    <Box flex={1}>
-                                        <Input
-                                            label="Mes"
-                                            name="mes"
-                                            placeholder="MM"
-                                            maxLength={2}
-                                            value={formData.mes}
-                                            onChange={handleChange}
-                                            required
-                                        />
-                                    </Box>
-                                </Stack>
                                 <Input
-                                    label="Hora sugerida"
-                                    name="sug_time"
-                                    type="time"
-                                    value={formData.sug_time}
+                                    label="Fecha de la Cita"
+                                    name="date"
+                                    type="date"
+                                    value={formData.date}
                                     onChange={handleChange}
+                                    error={formErrors.date}
                                     required
+                                    min={new Date().toISOString().split('T')[0]}
+                                    className="dark-input"
+                                />
+                                <Input
+                                    label="Hora sugerida (Máximo 5:00 PM)"
+                                    name="time"
+                                    type="time"
+                                    value={formData.time}
+                                    onChange={handleChange}
+                                    error={formErrors.time}
+                                    required
+                                    className="dark-input"
                                 />
                                 <Input
                                     label="Observaciones (Opcional)"

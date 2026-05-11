@@ -22,6 +22,7 @@ export default function UsersPage() {
         ids: new Set()
     });
     const [isModalOpen, setIsModalOpen] = React.useState(false);
+    const [editingUser, setEditingUser] = React.useState<User | null>(null);
     const [confirmModal, setConfirmModal] = React.useState<{
         open: boolean;
         title: string;
@@ -80,11 +81,31 @@ export default function UsersPage() {
         });
     };
 
-    const handleCreateUser = (userData: Partial<User>) => {
-        // This is now handled by the registration flow or can be added as a separate API call
-        // For now, let's just refresh the list after registration
-        setIsModalOpen(false);
-        fetchUsers();
+    const handleCreateUser = async (userData: Partial<User>) => {
+        try {
+            if (editingUser) {
+                await apiFetch(`/users/${editingUser.id_user}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(userData)
+                });
+            } else {
+                // For new users, we use the register endpoint or a new POST /users
+                await apiFetch('/users', {
+                    method: 'POST',
+                    body: JSON.stringify(userData)
+                });
+            }
+            setIsModalOpen(false);
+            setEditingUser(null);
+            fetchUsers();
+        } catch (error) {
+            console.error('Error saving user:', error);
+        }
+    };
+
+    const handleEdit = (user: User) => {
+        setEditingUser(user);
+        setIsModalOpen(true);
     };
 
     const columns: GridColDef[] = [
@@ -128,6 +149,7 @@ export default function UsersPage() {
             renderCell: (params: GridRenderCellParams) => (
                 <div className="flex items-center gap-2 h-full">
                     <button
+                        onClick={() => handleEdit(params.row as User)}
                         className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
                         title="Editar"
                     >
@@ -198,7 +220,11 @@ export default function UsersPage() {
                 >
                     <UserForm
                         onSubmit={handleCreateUser}
-                        onCancel={() => setIsModalOpen(false)}
+                        onCancel={() => {
+                            setIsModalOpen(false);
+                            setEditingUser(null);
+                        }}
+                        initialData={editingUser || undefined}
                     />
                 </Modal>
 

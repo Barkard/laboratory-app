@@ -17,6 +17,10 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onCancel, initialData }) 
         uid: initialData?.uid || '',
         first_name: initialData?.first_name || '',
         last_name: initialData?.last_name || '',
+        email: initialData?.email || '',
+        phone: initialData?.phone || '',
+        address: initialData?.address || '',
+        id_role: initialData?.id_role || 3,
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,6 +68,50 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onCancel, initialData }) 
                             required
                         />
                     </Stack>
+
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                        <Input
+                            label="Correo Electrónico"
+                            name="email"
+                            type="email"
+                            value={formData.email || ''}
+                            onChange={handleChange}
+                            placeholder="ejemplo@correo.com"
+                            required
+                        />
+                        <Input
+                            label="Teléfono"
+                            name="phone"
+                            value={formData.phone || ''}
+                            onChange={handleChange}
+                            placeholder="Ej. 04121234567"
+                            required
+                        />
+                    </Stack>
+
+                    <Input
+                        label="Dirección"
+                        name="address"
+                        value={formData.address || ''}
+                        onChange={handleChange}
+                        placeholder="Ej. Calle Principal #123"
+                    />
+
+                    {initialData && (
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-semibold text-slate-300 ml-1">Rol de Usuario</label>
+                            <select
+                                name="id_role"
+                                value={formData.id_role || 3}
+                                onChange={(e) => setFormData(prev => ({ ...prev, id_role: parseInt(e.target.value) }))}
+                                className="w-full bg-slate-900/50 border border-white/10 rounded-xl py-2.5 px-4 text-sm text-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/20 transition-all duration-300"
+                            >
+                                <option value={1}>Administrador</option>
+                                <option value={2}>Supervisor</option>
+                                <option value={3}>Paciente</option>
+                            </select>
+                        </div>
+                    )}
                 </Stack>
 
                 <Stack direction="row" spacing={2} justifyContent="flex-end" pt={2}>

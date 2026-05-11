@@ -54,3 +54,21 @@ body {
 .text-celeste {
   color: #38bdf8;
 }
+
+.dark-input {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+}
+
+.dark-input:focus {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1) !important;
+}
+
+/* Estilo para los iconos de fecha/hora en modo oscuro */
+.dark-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
