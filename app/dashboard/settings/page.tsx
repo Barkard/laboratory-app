@@ -6,6 +6,8 @@ import Icon from '@/components/ui/Icon';
 import ScrollReveal from '@/components/ui/ScrollReveal';
 import { User } from '@/types';
 import SettingsForm from '@/components/settings/SettingsForm';
+import { apiFetch } from '@/utils/api';
+
 import {
     Box,
     Typography,
