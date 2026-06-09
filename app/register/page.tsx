@@ -11,7 +11,7 @@ export default function RegisterPage() {
                 {/* Background Image Overlay */}
                 <div className="absolute inset-0 z-0">
                     <Image
-                        src="/login.jpg"
+                        src="/login.jpeg"
                         alt="Laboratory Background"
                         fill
                         className="object-cover opacity-30 mix-blend-overlay"
@@ -30,7 +30,7 @@ export default function RegisterPage() {
                         <span className="text-3xl font-bold tracking-tight">Laboratorio</span>
                     </div>
                     <h2 className="text-4xl font-extrabold mb-6 leading-tight">
-                        Hostipal Carlos Roa Moreno
+                        Hospital Dr Carlos Roa Moreno
                     </h2>
                     <p className="text-blue-100 text-lg mb-8">
                         Estamos casi listos. Solo necesitamos un par de datos adicionales para completar su perfil.

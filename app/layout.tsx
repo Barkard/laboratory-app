@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Laboratorio Carlos Roa Moreno",
+  title: "Hospital Dr Carlos Roa Moreno",
   description: "Sistema de gestión integral para laboratorio clínico",
   icons: {
     icon: '/icon.svg',
